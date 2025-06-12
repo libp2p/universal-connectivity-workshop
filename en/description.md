@@ -1,5 +1,3 @@
-![libp2p](https://raw.githubusercontent.com/libp2p/universal-connectivity-workshop/main/assets/libp2p.png)
-
 # Building Universal Connectivity with rust-libp2p
 
 Welcome to the Universal Connectivity Workshop! This hands-on workshop teaches you how to build peer-to-peer applications using rust-libp2p, the powerful networking stack for decentralized applications.
