@@ -1,4 +1,4 @@
-![libp2p](https://raw.githubusercontent.com/libp2p/universal-connectivity-workshop/main/assets/libp2p.png)
+![libp2p](https://raw.githubusercontent.com/libp2p/universal-connectivity-workshop/main/libp2p.png)
 
 # Building Universal Connectivity with rust-libp2p
 
