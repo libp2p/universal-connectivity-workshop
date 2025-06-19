@@ -1,6 +1,6 @@
 ![libp2p](https://raw.githubusercontent.com/libp2p/universal-connectivity-workshop/main/libp2p.png)
 
-# Building Universal Connectivity with **lib**p2p
+# Universal Connectivity
 
 Welcome to the Universal Connectivity Workshop! This hands-on workshop teaches you how to build peer-to-peer applications using libp2p, the powerful networking stack for decentralized applications.
 

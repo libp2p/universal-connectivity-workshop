@@ -1,4 +1,4 @@
-# Building Universal Connectivity with rust-libp2p
+# Universal Connectivity
 
 Welcome to the Universal Connectivity Workshop! This hands-on workshop teaches you how to build peer-to-peer applications using rust-libp2p, the powerful networking stack for decentralized applications.
 
