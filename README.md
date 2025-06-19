@@ -23,11 +23,12 @@ The `workshop` tool will try to detect Python3, Git, and Docker Compose on your 
    ```bash
    workshop --install https://github.com/libp2p/universal-connectivity-workshop
    ```
-4. Start the workshop:
+4. Start the workshop in one terminal window:
    ```bash
    workshop
    ```
-5. Follow the setup instructions in a terminal window.
+5. Follow the setup instructions `workshop` shows you in a second terminal window.
+6. Select the workshop.
 6. Complete all lessons.
 
 ## Status
