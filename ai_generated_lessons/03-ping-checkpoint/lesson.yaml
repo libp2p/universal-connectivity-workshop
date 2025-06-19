@@ -1,0 +1,6 @@
+title: "Protocol Basics - Ping Checkpoint"
+completed: false
+config:
+  checker_ip: "172.27.1.10"
+  checker_port: 9000
+  checker_multiaddr: "/ip4/172.27.1.10/tcp/9000"

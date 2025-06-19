@@ -1,0 +1,42 @@
+FROM rust:1.87 AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the Cargo.toml and src directory
+COPY Cargo.toml .
+COPY Cargo.lock .
+COPY src ./src
+
+# Build the app
+RUN cargo build --release
+
+# Get the name of the application from Cargo.toml
+RUN APP_NAME=$(awk '/^name = / {gsub(/"/, "", $3); print $3}' Cargo.toml) && \
+    cp /app/target/release/"$APP_NAME" /app/target/release/lesson
+
+# Final stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/target/release/lesson /app/lesson
+
+# Configurable timeout duration
+ARG TIMEOUT_DURATION=15s
+ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
+
+# Set the command to run with timeout and redirect output
+CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} /app/lesson > /app/stdout.log 2>&1"]
