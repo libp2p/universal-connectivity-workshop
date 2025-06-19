@@ -116,7 +116,7 @@ let swarm = SwarmBuilder::with_existing_identity(local_key)
         noise::Config::new,
         yamux::Config::default,
     )?
-    .with_behaviour(|_key| Behaviour { ping: ping::Behaviour::default() })?
+    .with_behaviour(|_| Behaviour { ping: ping::Behaviour::default() })?
     .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
     .build();
 ```
