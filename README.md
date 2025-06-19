@@ -1,8 +1,34 @@
 ![libp2p](https://raw.githubusercontent.com/libp2p/universal-connectivity-workshop/main/libp2p.png)
 
-# Universal Connectivity
+# Universal Connectivity Workshop
 
 Welcome to the Universal Connectivity Workshop! This hands-on workshop teaches you how to build peer-to-peer applications using libp2p, the powerful networking stack for decentralized applications.
+
+## Quick Start (All)
+
+1. Make sure you have [Python3 installed](https://www.python.org/downloads/).
+2. Make sure you have [Git installed](https://git-scm.com/downloads).
+3. Make sure you have [Docker and Docker Compose installed](https://docs.docker.com/get-docker/).
+
+The `workshop` tool will try to detect Python3, Git, and Docker Compose on your system. It will give you an error if it cannot find them. They must be installed so that `workshop` can find them for this to work.
+
+## Quick Start (Rust)
+
+1. Make sure you have [Rust installed](https://rustup.rs/).
+2. Intall the `workshop` tool:
+   ```bash
+   cargo install workshop
+   ```
+3. Install this workshop:
+   ```bash
+   workshop --install https://github.com/libp2p/universal-connectivity-workshop
+   ```
+4. Start the workshop:
+   ```bash
+   workshop
+   ```
+5. Follow the setup instructions in a terminal window.
+6. Complete all lessons.
 
 ## Status
 
