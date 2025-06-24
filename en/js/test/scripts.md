@@ -1,7 +1,3 @@
-Here are **automated/scripted testing instructions and scripts** for both Lesson 1 and Lesson 2. These scripts will ensure your lessons are robustly validated in a CI pipeline or locally, just like in the Rust workshop.
-
----
-
 ## **Automated Testing Script (Bash)**
 
 This script will:
