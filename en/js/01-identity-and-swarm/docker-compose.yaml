@@ -2,9 +2,10 @@ version: '3.8'
 services:
   app:
     build: ./app
+    dockerfile: ${LESSON_PATH}/app/Dockerfile
     command: node index.js
     working_dir: /usr/src/app
     volumes:
-      - ./app:/usr/src/app
+      - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
     environment:
       - NODE_ENV=development
