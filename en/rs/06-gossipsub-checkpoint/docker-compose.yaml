@@ -1,0 +1,36 @@
+services:
+  lesson:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile: ${LESSON_PATH}/app/Dockerfile
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEER=${REMOTE_PEER:-/ip4/172.16.16.17/tcp/9092}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
+    networks:
+      testnet:
+        ipv4_address: 172.16.16.16
+
+  checker:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-06-gossipsub-checkpoint
+    container_name: ucw-checker-06-gossipsub-checkpoint
+    depends_on:
+      - lesson
+    networks:
+      testnet:
+        ipv4_address: 172.16.16.17
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEER=${REMOTE_PEER:-/ip4/172.16.16.17/tcp/9092}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+
+networks:
+  testnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.16.0/24

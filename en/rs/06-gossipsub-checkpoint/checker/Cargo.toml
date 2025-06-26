@@ -1,0 +1,12 @@
+[package]
+name = "ucw-checker-06-gossipsub-checkpoint"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.98"
+futures = "0.3.31"
+libp2p = { version = "0.55.0", features = ["ed25519", "gossipsub", "identify", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
+prost = "0.13"
+prost-types = "0.13"
+tokio = { version = "1.45.1", features = ["full"] }

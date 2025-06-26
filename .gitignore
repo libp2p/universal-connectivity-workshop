@@ -1,2 +1,8 @@
 /target
 /en/rs/02-tcp-transport/checker/target
+/en/rs/03-ping-checkpoint/checker/target
+/en/rs/04-quic-transport/checker/target
+/en/rs/05-identify-checkpoint/checker/target
+/en/rs/06-gossipsub-checkpoint/checker/target
+/en/rs/07-kademlia-checkpoint/checker/target
+/en/rs/08-final-checkpoint/checker/target
