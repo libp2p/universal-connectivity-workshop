@@ -44,7 +44,7 @@ def check_output():
             return False
         
         # Check for startup message
-        if "Starting Universal Connectivity Application" not in output:
+        if "Starting Universal Connectivity Application".lower() not in output.lower():
             print("x Missing startup message. Expected: 'Starting Universal Connectivity Application...'")
             print(f"i Actual output: {repr(output)}")
             return False

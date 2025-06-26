@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "en/rs/02-tcp-transport/checker",
+    "xtask",
+]
+resolver = "2"

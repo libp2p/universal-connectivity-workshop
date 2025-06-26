@@ -189,54 +189,6 @@ The PeerId will be different each time you run the application since we're gener
 
 ## Hints
 
-## Hint - Missing imports
-If you get compilation errors about missing types, make sure you have all the necessary imports:
-
-```rust
-use anyhow::Result;
-use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
-use std::time::Duration;
-```
-
-## Hint - Swarm builder issues
-If you're having trouble with the SwarmBuilder, remember that you need to:
-1. Start with an existing identity: `SwarmBuilder::with_existing_identity(local_key)`
-2. Choose an executor: `.with_tokio()`
-3. Configure transport: `.with_tcp(...)`
-4. Add behavior: `.with_behaviour(|_| Behaviour { ping: ping::Behaviour::default() })`
-5. Configure swarm: `.with_swarm_config(...)`
-6. Build it: `.build()`
-
-## Hint - Event loop not working
-Make sure your event loop is properly structured:
-
-```rust
-loop {
-    tokio::select! {
-        Some(event) = swarm.next() => match event {
-            // Handle events here in the future
-            _ => {}
-        }
-    }
-}
-```
-
-You need to import `StreamExt` from futures for this to work.
-
-## Hint - Cargo.toml dependencies
-Double-check your dependencies in Cargo.toml:
-
-```toml
-[dependencies]
-anyhow = "1.0"
-futures = "0.3"
-libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
-tokio = { version = "1.45", features = ["full"] }
-```
-
 ## Hint - Complete Solution
 
 Here's the complete working solution:
