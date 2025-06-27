@@ -142,6 +142,38 @@ loop {
 
 After making these changes to your peer, go ahead and hit the `c` key to check your solution. If you did everything correctly, your peer will dial the remote peer and print connection events when it connects or disconnects.
 
+## Testing Your Implementation
+
+If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solutionto see if it is correct. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshop/universal-conectivity-workshop/en/rs/02-tcp-transport`.
+
+1. Set the environment variables:
+   ```bash
+   export PROJECT_ROOT=/path/to/workshop
+   export LESSON_PATH=en/rs/03-ping-checkpoint
+   ```
+
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
+
+3. Run with Docker Compose:
+   ```bash
+   docker compose up --build
+   ```
+
+4. Run the Python script to check your output:
+   ```bash
+   python check.py
+   ```
+
+## Success Criteria
+
+Your implementation should:
+- ✅ Display the startup message and local peer ID
+- ✅ Successfully dial the remote peer
+- ✅ Establish a connection and print connection messages
+
 ## Hints
 
 ## Hint - Complete Solution

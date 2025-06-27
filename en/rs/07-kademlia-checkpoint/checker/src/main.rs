@@ -1,8 +1,10 @@
 use anyhow::Result;
 use futures::StreamExt;
 use libp2p::identity;
-use libp2p::{gossipsub, identify, kad, noise, ping, tcp, yamux, Multiaddr, SwarmBuilder, StreamProtocol};
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
+use libp2p::{
+    gossipsub, identify, kad, noise, ping, tcp, yamux, Multiaddr, StreamProtocol, SwarmBuilder,
+};
 use prost::Message;
 use std::env;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -58,13 +60,14 @@ async fn main() -> Result<()> {
     let mut gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(local_key.clone()),
         gossipsub_config,
-    ).expect("Correct configuration");
+    )
+    .expect("Correct configuration");
 
     // Subscribe to topics
     let topics = vec![
         "universal-connectivity",
         "universal-connectivity-file",
-        "universal-connectivity-browser-peer-discovery"
+        "universal-connectivity-browser-peer-discovery",
     ];
 
     for topic_str in topics {
@@ -91,11 +94,11 @@ async fn main() -> Result<()> {
             ping: ping::Behaviour::new(
                 ping::Config::new()
                     .with_interval(Duration::from_secs(1))
-                    .with_timeout(Duration::from_secs(5))
+                    .with_timeout(Duration::from_secs(5)),
             ),
             identify: identify::Behaviour::new(
                 identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-                    .with_agent_version("universal-connectivity/0.1.0".to_string())
+                    .with_agent_version("universal-connectivity/0.1.0".to_string()),
             ),
             gossipsub,
             kademlia,
@@ -122,10 +125,10 @@ async fn main() -> Result<()> {
                         timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
                         message_type: MessageType::Chat as i32,
                     };
-                    
+
                     let mut buf = Vec::new();
                     test_message.encode(&mut buf)?;
-                    
+
                     if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, buf) {
                         println!("Failed to publish message: {:?}", e);
                     } else {
@@ -133,7 +136,7 @@ async fn main() -> Result<()> {
                     }
                     message_sent = true;
                 }
-                
+
                 // Perform Kademlia bootstrap if not done yet
                 if !kademlia_bootstrapped {
                     if let Err(e) = swarm.behaviour_mut().kademlia.bootstrap() {
@@ -148,9 +151,9 @@ async fn main() -> Result<()> {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on: {address}");
                 }
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                    
+
                     // Add peer to Kademlia routing table
                     swarm.behaviour_mut().kademlia.add_address(&peer_id, endpoint.get_remote_address().clone());
                     println!("Added peer {peer_id} to Kademlia routing table");
@@ -168,19 +171,11 @@ async fn main() -> Result<()> {
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
-                            ping::Event {
-                                peer,
-                                connection,
-                                result: Ok(rtt),
-                            } => {
-                                println!("Received a ping from {} (connection {:?}), round trip time: {} ms", peer, connection, rtt.as_millis());
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            ping::Event {
-                                peer,
-                                connection,
-                                result: Err(failure),
-                            } => {
-                                println!("Ping failed to {} (connection {:?}): {:?}", peer, connection, failure);
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
                         }
                     }
@@ -192,41 +187,37 @@ async fn main() -> Result<()> {
                                 println!("Peer supports {} protocols", info.protocols.len());
                             }
                             identify::Event::Sent { peer_id, .. } => {
-                                println!("Sent identify info to: {}", peer_id);
+                                println!("Sent identify info to: {peer_id}");
                             }
                             identify::Event::Error { peer_id, error, .. } => {
-                                println!("Identify error with {}: {:?}", peer_id, error);
+                                println!("Identify error with {peer_id}: {error:?}");
                             }
                             _ => {}
                         }
                     }
                     BehaviourEvent::Gossipsub(gossipsub_event) => {
                         match gossipsub_event {
-                            gossipsub::Event::Message {
-                                propagation_source: _,
-                                message_id: _,
-                                message,
-                            } => {
+                            gossipsub::Event::Message { message, .. } => {
                                 let topic = message.topic.clone();
                                 if let Ok(uc_message) = UniversalConnectivityMessage::decode(&message.data[..]) {
-                                    println!("Received message on topic '{}': {} from {} (type: {:?})", 
+                                    println!("Received message on topic '{}': {} from {} (type: {:?})",
                                         topic, uc_message.message, uc_message.from, uc_message.message_type);
                                 } else {
-                                    println!("Received non-UC message on topic '{}': {} bytes", 
+                                    println!("Received non-UC message on topic '{}': {} bytes",
                                         topic, message.data.len());
                                 }
                             }
                             gossipsub::Event::Subscribed { peer_id, topic } => {
-                                println!("Peer {} subscribed to topic: {}", peer_id, topic);
+                                println!("Peer {peer_id} subscribed to topic: {topic}");
                             }
                             gossipsub::Event::Unsubscribed { peer_id, topic } => {
-                                println!("Peer {} unsubscribed from topic: {}", peer_id, topic);
+                                println!("Peer {peer_id} unsubscribed from topic: {topic}");
                             }
                             _ => {}
                         }
                     }
                     BehaviourEvent::Kademlia(kad_event) => {
-                        println!("Kademlia event: {:?}", kad_event);
+                        println!("Kademlia event: {kad_event:?}");
                     }
                 }
                 SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {

@@ -172,20 +172,35 @@ async fn main() -> Result<()> {
 }
 ```
 
-## Testing Your Solution
+## Testing Your Implementation
 
-Run your application with:
-```bash
-cargo run
-```
+If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solutionto see if it is correct. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshop/universal-conectivity-workshop/en/rs/01-identity-and-swarm`.
 
-You should see output similar to:
-```
-Starting Universal Connectivity Application...
-Local peer id: 12D3KooWQ6ERu4LGLQFZMkWzdjNcUbxE2UqLQWX5bXBkYU2jcySd
-```
+1. Set the environment variables:
+   ```bash
+   export PROJECT_ROOT=/path/to/workshop
+   export LESSON_PATH=en/rs/03-ping-checkpoint
+   ```
 
-The PeerId will be different each time you run the application since we're generating a new keypair each time.
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
+
+3. Run with Docker Compose:
+   ```bash
+   docker compose up --build
+   ```
+
+4. Run the Python script to check your output:
+   ```bash
+   python check.py
+   ```
+
+## Success Criteria
+
+Your implementation should:
+- ✅ Display the startup message and local peer ID
 
 ## Hints
 

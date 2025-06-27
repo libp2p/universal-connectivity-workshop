@@ -1,12 +1,12 @@
 use anyhow::Result;
 use futures::StreamExt;
 use libp2p::identity;
-use prost::Message;
-use libp2p::{noise, tcp, yamux, Multiaddr, SwarmBuilder, StreamProtocol};
 use libp2p::{
-    ping, identify, gossipsub, kad,
+    gossipsub, identify, kad, ping,
     swarm::{NetworkBehaviour, SwarmEvent},
 };
+use libp2p::{noise, tcp, yamux, Multiaddr, StreamProtocol, SwarmBuilder};
+use prost::Message;
 use std::env;
 use std::time::Duration;
 
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
     let chat_topic = gossipsub::IdentTopic::new("universal-connectivity");
     let file_topic = gossipsub::IdentTopic::new("universal-connectivity-file");
     let browser_topic = gossipsub::IdentTopic::new("universal-connectivity-browser-peer-discovery");
-    
+
     gossipsub.subscribe(&chat_topic)?;
     gossipsub.subscribe(&file_topic)?;
     gossipsub.subscribe(&browser_topic)?;
@@ -119,17 +119,17 @@ async fn main() -> Result<()> {
         .with_quic()
         .with_behaviour(|_| Behaviour {
             ping: ping::Behaviour::new(ping::Config::new().with_interval(Duration::from_secs(1))),
-            identify: identify::Behaviour::new(identify::Config::new(
-                "/ipfs/id/1.0.0".into(),
-                local_key.public(),
-            ).with_agent_version("universal-connectivity/0.1.0".into())),
+            identify: identify::Behaviour::new(
+                identify::Config::new("/ipfs/id/1.0.0".into(), local_key.public())
+                    .with_agent_version("universal-connectivity/0.1.0".into()),
+            ),
             gossipsub,
             kademlia,
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    swarm.listen_on("/ip4/0.0.0.0/tcp/9092".parse()?)?;
+    swarm.listen_on(remote_addr)?;
 
     // Send a welcome chat message after connecting
     let mut sent_welcome = false;
@@ -142,7 +142,7 @@ async fn main() -> Result<()> {
                 }
                 SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                    
+
                     // Send welcome message once when first peer connects
                     if !sent_welcome {
                         let welcome_msg = UniversalConnectivityMessage {
@@ -150,10 +150,10 @@ async fn main() -> Result<()> {
                                 message: "Hello from the Universal Connectivity checker!".to_string(),
                             })),
                         };
-                        
+
                         let mut buf = Vec::new();
                         prost::Message::encode(&welcome_msg, &mut buf)?;
-                        
+
                         if let Err(e) = swarm.behaviour_mut().gossipsub.publish(chat_topic.clone(), buf) {
                             println!("Failed to publish welcome message: {e}");
                         } else {
@@ -170,53 +170,74 @@ async fn main() -> Result<()> {
                     }
                 }
                 SwarmEvent::Behaviour(event) => match event {
-                    BehaviourEvent::Ping(ping::Event { peer, result, .. }) => {
-                        match result {
-                            Ok(duration) => {
-                                println!("Received a ping from {peer}, round trip time: {} ms", duration.as_millis());
+                    BehaviourEvent::Ping(ping_event) => {
+                        match ping_event {
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            Err(e) => {
-                                println!("Ping failed for {peer}: {e}");
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
                         }
                     }
-                    BehaviourEvent::Identify(identify::Event::Received { peer_id, info, .. }) => {
-                        println!("Received identify from {peer_id}: protocol_version: {}", info.protocol_version);
+                    BehaviourEvent::Identify(identify_event) => {
+                        match identify_event {
+                            identify::Event::Received { peer_id, info, .. } => {
+                                println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
+                                println!("Peer agent: {}", info.agent_version);
+                                println!("Peer supports {} protocols", info.protocols.len());
+                            }
+                            identify::Event::Sent { peer_id, .. } => {
+                                println!("Sent identify info to: {peer_id}");
+                            }
+                            identify::Event::Error { peer_id, error, .. } => {
+                                println!("Identify error with {peer_id}: {error:?}");
+                            }
+                            _ => {}
+                        }
                     }
-                    BehaviourEvent::Gossipsub(gossipsub::Event::Message { 
-                        message, 
-                        propagation_source: peer_id, 
-                        .. 
-                    }) => {
-                        // Try to decode as UniversalConnectivityMessage
-                        match UniversalConnectivityMessage::decode(&message.data[..]) {
-                            Ok(uc_msg) => {
-                                match uc_msg.message {
-                                    Some(universal_connectivity_message::Message::Chat(chat)) => {
-                                        println!("Received chat message from {peer_id}: {}", chat.message);
-                                    }
-                                    Some(universal_connectivity_message::Message::File(file)) => {
-                                        println!("Received file message from {peer_id}: {} ({} bytes)", file.name, file.size);
-                                    }
-                                    _ => {
-                                        println!("Received other gossipsub message from {peer_id}");
+                    BehaviourEvent::Gossipsub(gossipsub_event) => match gossipsub_event {
+                        gossipsub::Event::Message {
+                            message,
+                            propagation_source: peer_id,
+                            ..
+                        } => {
+                            // Try to decode as UniversalConnectivityMessage
+                            match UniversalConnectivityMessage::decode(&message.data[..]) {
+                                Ok(uc_msg) => {
+                                    match uc_msg.message {
+                                        Some(universal_connectivity_message::Message::Chat(chat)) => {
+                                            println!("Received chat message from {peer_id}: {}", chat.message);
+                                        }
+                                        Some(universal_connectivity_message::Message::File(file)) => {
+                                            println!("Received file message from {peer_id}: {} ({} bytes)", file.name, file.size);
+                                        }
+                                        _ => {
+                                            println!("Received other gossipsub message from {peer_id}");
+                                        }
                                     }
                                 }
-                            }
-                            Err(_) => {
-                                // Fallback to raw message display
-                                if let Ok(text) = String::from_utf8(message.data.clone()) {
-                                    println!("Received raw gossipsub message from {peer_id}: {text}");
-                                } else {
-                                    println!("Received binary gossipsub message from {peer_id}");
+                                Err(_) => {
+                                    // Fallback to raw message display
+                                    if let Ok(text) = String::from_utf8(message.data.clone()) {
+                                        println!("Received raw gossipsub message from {peer_id}: {text}");
+                                    } else {
+                                        println!("Received binary gossipsub message from {peer_id}");
+                                    }
                                 }
                             }
                         }
+                        gossipsub::Event::Subscribed { peer_id, topic } => {
+                            println!("Peer {peer_id} subscribed to topic: {topic}");
+                        }
+                        gossipsub::Event::Unsubscribed { peer_id, topic } => {
+                            println!("Peer {peer_id} unsubscribed from topic: {topic}");
+                        }
+                        _ => {}
                     }
                     BehaviourEvent::Kademlia(kad_event) => {
-                        println!("Kademlia event: {:?}", kad_event);
+                        println!("Kademlia event: {kad_event:?}");
                     }
-                    _ => {}
                 }
                 _ => {}
             }

@@ -24,16 +24,15 @@ Unlike ICMP ping, libp2p's ping protocol works over any transport and respects t
 
 Building on your TCP transport implementation from Lesson 2, you need to:
 
-1. **Add Ping Behavior**: Include `ping::Behaviour` in your `NetworkBehaviour` struct
-2. **Configure Ping Settings**: Set up ping with a 1-second interval and 5-second timeout
-3. **Dial Remote Peer**: Connect to the peer specified in `REMOTE_PEER` environment variable
-4. **Handle Ping Events**: Process `ping::Event` and display round-trip times
+1. **Configure Ping Settings**: Set up ping with a 1-second interval and 5-second timeout
+2. **Dial Remote Peer**: Connect to the peer specified in `REMOTE_PEER` environment variable
+3. **Handle Ping Events**: Process `ping::Event` and display round-trip times
 
 ## Step-by-Step Instructions
 
 ### Step 1: Update Your NetworkBehaviour
 
-Your existing NetworkBehaviour already includes ping behavior from Lesson 1, but now you need to configure it properly. Update your behavior configuration:
+Your existing NetworkBehaviour already includes ping behavior from Lesson 1, but now you need to configure it properly. Your NetworkBehaviour should already look like the following:
 
 ```rust
 use libp2p::ping;
@@ -47,7 +46,9 @@ struct Behaviour {
 
 ### Step 2: Configure Ping in the Swarm Builder
 
-When creating your behavior, configure the ping protocol with specific settings:
+When creating your behavior, instead of using a `ping::Behaviour::default()`, we want to use the `ping::Behaviour::new()` function and provide it with a `ping::Config` that is configured with the correct 1 second interval and 5 second timeout. The default settings for interval and timeout are 15 seconds and 20 seconds respectively. We are making those values shorter so that when we test this solution we'll send and receive pings immediately after establishing a connection to the remote peer. This is just for convenience. In normal networking situations, the defaults are more appropriate. When programming for mobile or other battery powered devices, you want to make the interval and timeout much longer, such as 30 and 45 seconds so that the radio in the device can spend less time in the high power active state.
+
+Modify your code that builds the swarm so that the ping behaviour is configured like this:
 
 ```rust
 .with_behaviour(|_| Behaviour {
@@ -61,7 +62,7 @@ When creating your behavior, configure the ping protocol with specific settings:
 
 ### Step 3: Dial the Remote Peer
 
-Use the same dialing code from Lesson 2:
+Use the same dialing code from Lesson 2, it should look like this:
 
 ```rust
 let remote_peer = env::var("REMOTE_PEER")?;
@@ -91,19 +92,12 @@ loop {
             SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                 BehaviourEvent::Ping(ping_event) => {
                     match ping_event {
-                        ping::Event {
-                            peer,
-                            result: Ok(ping::Success::Ping { rtt }),
-                        } => {
-                            println!("Received a ping from {}, round trip time: {} ms", peer, rtt.as_millis());
+                        ping::Event { peer, result: Ok(rtt), .. } => {
+                            println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                         }
-                        ping::Event {
-                            peer,
-                            result: Err(failure),
-                        } => {
-                            println!("Ping failed to {}: {:?}", peer, failure);
+                        ping::Event { peer, result: Err(failure), .. } => {
+                            println!("Ping failed to {peer}: {failure:?}");
                         }
-                        _ => {}
                     }
                 }
             }
@@ -118,18 +112,25 @@ loop {
 
 ## Testing Your Implementation
 
+If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solutionto see if it is correct. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshop/universal-conectivity-workshop/en/rs/03-ping-checkpoint`.
+
 1. Set the environment variables:
    ```bash
    export PROJECT_ROOT=/path/to/workshop
    export LESSON_PATH=en/rs/03-ping-checkpoint
    ```
 
-2. Run with Docker Compose:
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
+
+3. Run with Docker Compose:
    ```bash
    docker compose up --build
    ```
 
-3. Check your output:
+4. Run the Python script to check your output:
    ```bash
    python check.py
    ```
@@ -235,19 +236,12 @@ async fn main() -> Result<()> {
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
-                            ping::Event {
-                                peer,
-                                result: Ok(ping::Success::Ping { rtt }),
-                            } => {
-                                println!("Received a ping from {}, round trip time: {} ms", peer, rtt.as_millis());
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            ping::Event {
-                                peer,
-                                result: Err(failure),
-                            } => {
-                                println!("Ping failed to {}: {:?}", peer, failure);
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
-                            _ => {}
                         }
                     }
                 }

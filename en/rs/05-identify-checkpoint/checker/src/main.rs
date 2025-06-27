@@ -39,11 +39,11 @@ async fn main() -> Result<()> {
             ping: ping::Behaviour::new(
                 ping::Config::new()
                     .with_interval(Duration::from_secs(1))
-                    .with_timeout(Duration::from_secs(5))
+                    .with_timeout(Duration::from_secs(5)),
             ),
             identify: identify::Behaviour::new(
                 identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-                    .with_agent_version("universal-connectivity/0.1.0".to_string())
+                    .with_agent_version("universal-connectivity/0.1.0".to_string()),
             ),
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Listening on: {address}");
                 }
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
@@ -73,19 +73,11 @@ async fn main() -> Result<()> {
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
-                            ping::Event {
-                                peer,
-                                connection,
-                                result: Ok(rtt),
-                            } => {
-                                println!("Received a ping from {} (connection {:?}), round trip time: {} ms", peer, connection, rtt.as_millis());
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            ping::Event {
-                                peer,
-                                connection,
-                                result: Err(failure),
-                            } => {
-                                println!("Ping failed to {} (connection {:?}): {:?}", peer, connection, failure);
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
                         }
                     }
@@ -97,10 +89,10 @@ async fn main() -> Result<()> {
                                 println!("Peer supports {} protocols", info.protocols.len());
                             }
                             identify::Event::Sent { peer_id, .. } => {
-                                println!("Sent identify info to: {}", peer_id);
+                                println!("Sent identify info to: {peer_id}");
                             }
                             identify::Event::Error { peer_id, error, .. } => {
-                                println!("Identify error with {}: {:?}", peer_id, error);
+                                println!("Identify error with {peer_id}: {error:?}");
                             }
                             _ => {}
                         }
