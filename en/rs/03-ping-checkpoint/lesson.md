@@ -65,10 +65,23 @@ Modify your code that builds the swarm so that the ping behaviour is configured 
 Use the same dialing code from Lesson 2, it should look like this:
 
 ```rust
-let remote_peer = env::var("REMOTE_PEER")?;
-let remote_addr: Multiaddr = remote_peer.parse()?;
-println!("Dialing: {}", remote_addr);
-swarm.dial(remote_addr)?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+
+    // ...
+
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
+
+    // ...
+}
 ```
 
 ### Step 4: Handle Ping Events
@@ -79,7 +92,7 @@ In your event loop, add handling for ping events alongside your existing connect
 loop {
     tokio::select! {
         Some(event) = swarm.next() => match event {
-            SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+            SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                 println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
             }
             SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
@@ -223,7 +236,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {

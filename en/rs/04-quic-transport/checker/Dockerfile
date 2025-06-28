@@ -22,6 +22,9 @@ RUN APP_NAME=$(awk '/^name = / {gsub(/"/, "", $3); print $3}' Cargo.toml) && \
 # Final stage
 FROM debian:bookworm-slim
 
+# Link this image to a repo
+LABEL org.opencontainers.image.source="https://github.com/libp2p/universal-connectivity-workshop"
+
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \

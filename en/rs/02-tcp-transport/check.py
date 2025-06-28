@@ -26,7 +26,7 @@ def validate_peer_id(peer_id_str):
         if char not in valid_chars:
             return False, f"Invalid character '{char}' in peer ID. Must be base58 encoded."
     
-    return True, f"Valid peer ID format: {peer_id_str}"
+    return True, f"{peer_id_str}"
 
 #TODO: change this to use py-multiaddr for Multiaddr validation
 def validate_multiaddr(addr_str):
@@ -36,104 +36,100 @@ def validate_multiaddr(addr_str):
         return False, f"Invalid multiaddr format: {addr_str}"
     
     # Should contain /tcp/ for TCP transport
-    if "/tcp/" not in addr_str:
-        return False, f"Missing TCP transport in multiaddr: {addr_str}"
+    if not "/tcp/" in addr_str or "/quic-v1/" in addr_str:
+        return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
     
-    return True, f"Valid multiaddr: {addr_str}"
+    return True, f"{addr_str}"
 
 def check_output():
     """Check the output log for expected TCP transport functionality"""
-    if not os.path.exists("stdout.log"):
-        print("x stdout.log file not found")
+    if not os.path.exists("checker.log"):
+        print("x checker.log file not found")
         return False
     
     try:
-        with open("stdout.log", "r") as f:
+        with open("checker.log", "r") as f:
             output = f.read()
         
         print("i Checking TCP transport functionality...")
         
         if not output.strip():
-            print("x stdout.log is empty - application may have failed to start")
+            print("x checker.log is empty - application may have failed to start")
             return False
-        
-        # Check for startup message
-        if "Starting Universal Connectivity Application".lower() not in output.lower():
-            print("x Missing startup message. Expected: 'Starting Universal Connectivity application...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        print("v Found startup message")
-        
-        # Check for peer ID output
-        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
-        peer_id_match = re.search(peer_id_pattern, output)
-        
-        if not peer_id_match:
-            print("x Missing peer ID output. Expected format: 'Local peer id: 12D3KooW...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        peer_id = peer_id_match.group(1)
-        print(f"v Found peer ID: {peer_id}")
 
-        # Validate the peer ID format
-        valid, message = validate_peer_id(peer_id)
+        # a correct solution causes the checker to output a sequence of messages like the following:
+        # incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
+        # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
+        # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+
+
+        # check for:
+        #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
+        incoming_pattern = r"incoming,([/\w\.:]+),([/\w\.:]+)"
+        incoming_matches = re.search(incoming_pattern, output)
+        if not incoming_matches:
+            print("x No incoming dial received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        t = incoming_matches.group(1)
+        valid, t_message = validate_multiaddr(t)
         if not valid:
-            print(f"x {message}")
+            print(f"x {t_message}")
             return False
-
-        print(f"v {message}")
         
-        # Check for dialing multiaddr
-        dial_multiaddr_pattern = r"Dialing: ([/\w\.:]+)"
-        dial_multiaddr_matches = re.search(dial_multiaddr_pattern, output)
-        
-        if not dial_multiaddr_matches:
-            print("x No dialed multiaddr found. Expected format: 'Dialing: /ip4/.../tcp/...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-
-        multiaddr = dial_multiaddr_matches.group(1)
-        valid, message = validate_multiaddr(multiaddr)
+        f = incoming_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
         if not valid:
-            print(f"x {message}")
+            print(f"x {f_message}")
             return False
-        
-        print(f"v {message}")
 
-        # Check for "Connected to: {peer_id}" message
-        connected_pattern = rf"Connected to: (12D3KooW[A-Za-z0-9]+) via {re.escape(multiaddr)}"
-        connected_match = re.search(connected_pattern, output)
-        if not connected_match:
-            print(f"x Missing connection message")
-            print(f"i Expected pattern: {connected_pattern}")
+        print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
+
+        # check for:
+        #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:]+)"
+        connected_matches = re.search(connected_pattern, output)
+        if not connected_matches:
+            print("x No connection established")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        remote_peer_id = connected_match.group(1)
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        f = connected_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
+        if not valid:
+            print(f"x {f_message}")
+            return False
 
-        # Check for "Connection to {peer_id} closed gracefully" message
-        closed_pattern = rf"Connection to {re.escape(remote_peer_id)} closed gracefully"
-        if re.search(closed_pattern, output):
-            print(f"v Found graceful closure message for peer ID: {remote_peer_id}")
-        else:
-            print(f"x Missing graceful closure message for peer ID: {remote_peer_id}")
+        print(f"v Connection established with {peerid_message} at {f_message}")
+
+        # check for:
+        #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
+        closed_matches = re.search(closed_pattern, output)
+        if not closed_matches:
+            print("x Connection closure not detected")
             print(f"i Actual output: {repr(output)}")
             return False
         
-        # Check that application runs for reasonable time without crashing
-        lines = output.strip().split('\n')
-        if len(lines) < 3:  # Should have startup, peer id, and at least one listening address
-            print("x Application seems to have crashed too quickly")
-            print(f"i Output lines: {lines}")
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
             return False
         
-        print("v Application started successfully with TCP transport")
-        
+        print(f"v Connection {peerid_message} closed gracefully")
+
         return True
         
     except Exception as e:
-        print(f"x Error reading stdout.log: {e}")
+        print(f"x Error reading checker.log: {e}")
         return False
 
 def main():

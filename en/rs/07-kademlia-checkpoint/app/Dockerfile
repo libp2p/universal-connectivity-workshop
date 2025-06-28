@@ -17,13 +17,10 @@ RUN cargo build
 
 # Get the name of the application from Cargo.toml
 RUN APP_NAME=$(awk '/^name = / {gsub(/"/, "", $3); print $3}' Cargo.toml) && \
-    cp /app/target/debug/"$APP_NAME" /app/target/debug/checker
+    cp /app/target/debug/"$APP_NAME" /app/target/debug/lesson
 
 # Final stage
 FROM debian:bookworm-slim
-
-# Link this image to a repo
-LABEL org.opencontainers.image.source="https://github.com/libp2p/universal-connectivity-workshop"
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -34,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/target/debug/checker /app/checker
+COPY --from=builder /app/target/debug/lesson /app/lesson
 
 # Configurable timeout duration
 ARG TIMEOUT_DURATION
@@ -43,4 +40,4 @@ ARG REMOTE_ADDR
 ENV REMOTE_ADDR=${REMOTE_ADDR}
 
 # Set the command to run with timeout and redirect output
-CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} /app/checker > /app/checker.log 2>&1"]
+CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} /app/lesson > /app/stdout.log 2>&1"]

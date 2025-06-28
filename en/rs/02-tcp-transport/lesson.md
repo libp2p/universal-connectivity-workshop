@@ -65,24 +65,29 @@ Extend your application to:
 In your `src/main.rs`, ensure you have the necessary imports. You will need to import `Multiaddr` for handling addresses and `SwarmEvent` for handling connection events. Add the following imports at the top of your file:
 
 ```rust
-use std::env;
+use std::{env, str::FromStr}; // <- Add this whole line
 use libp2p::{noise, tcp, yamux, SwarmBuilder, Multiaddr}; // <- Add Multiaddr
 use libp2p::{ping, swarm::{NetworkBehaviour, SwarmEvent}}; // <- Add SwarmEvent
 ```
 
 ### Step 2: Parse the Multiaddr from Environment Variable
 
-In this workshop, the `Multiaddr` for a remote peer is always set in the environment variable `REMOTE_PEER`. It is important to note that the value of `REMOTE_PEER` is not an IP address but rather a Multiaddr string that looks something like: `/ip4/172.16.16.17/tcp/9092`.
+In this workshop, one or more `Multiaddr` strings for remote peers is always set in the environment variable `REMOTE_PEERS`. It is important to note that the value of `REMOTE_PEERS` is not an IP address but rather one or more `Multiaddr` strings separated by commas. `Multiaddr` strings looks something like: `/ip4/172.16.16.17/tcp/9092`.
 
-To parse the value into a `Multiaddr`, add the following code to your `main` function:
+To parse the list of `Multiaddr` strings, add the following code to your `main` function:
 
 ```rust
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     println!("Starting Universal Connectivity application...");
 
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
     
     // ... existing code ...
 }
@@ -99,8 +104,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // ... existing code initialize and build the swarm ...
 
-    println!("Dialing: {remote_addr}");
-    swarm.dial(remote_addr)?;
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
 
     // ... existing event loop code ...
 }
@@ -112,7 +119,7 @@ If you run your peer now, nothing happens because even though you dialed the rem
 
 By default, a libp2p swarm will emit events when it starts listening, connects to peers, or encounters errors. You need to handle these events in your event loop. The connection related swarm events are all documented here in [enum SwarmEvent](https://docs.rs/libp2p/0.55.0/libp2p/swarm/enum.SwarmEvent.html).
 
-For now, we only care about the `ConnectionEstablished`, `ConnectionClosed`, and `OutgoingConnectionError` events because they will tell us if our dial succeeded or failed and when a successful connection has been closed. Notice that in the event handler for `ConnectionEstablished`, we will initiate a graceful close of the connection. This is just for testing purposes to ensure we can connect and disconnect successfully.
+For now, we only care about the `ConnectionEstablished`, `ConnectionClosed`, and `OutgoingConnectionError` events because they will tell us if our dial succeeded or failed and when a connection has been closed. In this lesson, you only have to dial the remote peer, so you don't need to handle incoming connections yet. If you successfully dial the remote peer, it will gracefully close the connection. You do not need to do anything other than what is shown below.
 
 Add the following code to your event loop to handle connection events caused by dialing a remote peer:
 
@@ -120,9 +127,8 @@ Add the following code to your event loop to handle connection events caused by 
 loop {
     tokio::select! {
         Some(event) = swarm.next() => match event {
-            SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+            SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                 println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                swarm.close_connection(connection_id);
             }
             SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                 if let Some(err) = cause {
@@ -140,7 +146,7 @@ loop {
 }
 ```
 
-After making these changes to your peer, go ahead and hit the `c` key to check your solution. If you did everything correctly, your peer will dial the remote peer and print connection events when it connects or disconnects.
+After making these changes to your peer, hit the `c` key to check your solution. If you did everything correctly, your peer will dial the remote peer and print connection events when it connects or disconnects.
 
 ## Testing Your Implementation
 
@@ -198,10 +204,15 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    // Parse the remote peer address from the environment variable
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
-    
+    // Parse the remote peer addresses from the environment variable
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+     
     // Generate a random Ed25519 keypair for our local peer
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = local_key.public().to_peer_id();
@@ -219,17 +230,17 @@ async fn main() -> Result<()> {
         .with_behaviour(|_| Behaviour { ping: ping::Behaviour::default() })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
-    
-    // Dial the remote peer
-    println!("Dialing: {remote_addr}");
-    swarm.dial(remote_addr)?;
+
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
     
     // Run the network event loop
     loop {
         match swarm.select_next_some().await {
-            SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+            SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                 println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                swarm.close_connection(connection_id);
             }
             SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                 if let Some(err) = cause {

@@ -1,13 +1,11 @@
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
-    ping,
+    identity, noise, ping,
     swarm::{NetworkBehaviour, SwarmEvent},
+    tcp, yamux, Multiaddr, SwarmBuilder,
 };
-use std::env;
-use std::time::Duration;
+use std::{env, str::FromStr, time::Duration};
 
 // Define a custom network behaviour that includes ping functionality
 #[derive(NetworkBehaviour)]
@@ -17,14 +15,15 @@ struct Behaviour {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Starting Universal Connectivity Application...");
-
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(Multiaddr::from_str)
+        .collect::<Result<_, _>>()?;
 
     let local_key = identity::Keypair::generate_ed25519();
-    let local_peer_id = identity::PeerId::from(local_key.public());
-    println!("Local peer id: {local_peer_id}");
 
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
@@ -39,30 +38,28 @@ async fn main() -> Result<()> {
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    swarm.listen_on(remote_addr)?;
+    // listen on all addresses
+    for addr in remote_addrs.into_iter() {
+        swarm.listen_on(addr)?;
+    }
 
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::NewListenAddr { address, .. } => {
-                    println!("Listening on: {address}");
-                }
                 SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
-                    println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
+                    println!("connected,{peer_id},{}", endpoint.get_remote_address());
                     swarm.close_connection(connection_id);
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                     if let Some(err) = cause {
-                        println!("Connection to {peer_id} closed with error: {err}");
+                        println!("error,{err}");
                     } else {
-                        println!("Connection to {peer_id} closed gracefully.");
+                        println!("closed,{peer_id}");
                     }
+                    return Ok(())
                 }
                 SwarmEvent::IncomingConnection { local_addr, send_back_addr, .. } => {
-                    println!("Incoming connection to: {local_addr}, from: {send_back_addr}");
-                }
-                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                    println!("Failed to connect to {peer_id:?}: {error}");
+                    println!("incoming,{local_addr},{send_back_addr}");
                 }
                 _ => {}
             }
