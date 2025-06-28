@@ -25,7 +25,8 @@ Each transport can be enhanced with:
 
 ## Transport Stack
 
-A typical libp2p connection stack looks like:
+The libp2p stack looks like the following when using TCP, Noise, and Yamux:
+
 ```
 Application protocols (ping, gossipsub, etc.)
                     ↕
@@ -36,18 +37,6 @@ Application protocols (ping, gossipsub, etc.)
               Transport (TCP)
                     ↕
                 Network (IP)
-```
-
-Note that QUIC is a modern alternative to TCP, providing built-in encryption and multiplexing. When using QUIC as your transport the libp2p connection stack looks like:
-
-```
-Application protocols (ping, gossipsub, etc.)
-                   ↕
-            Multiplexer ───┐
-            Security     (QUIC)
-            Transport   ───┘
-                   ↕
-               Network (IP)
 ```
 
 ## Your Task
@@ -165,7 +154,10 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker compose up --build
+   docker rm -f ucw-checker-02-tcp-transport
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
    ```
 
 4. Run the Python script to check your output:

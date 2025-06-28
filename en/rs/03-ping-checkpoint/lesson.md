@@ -140,7 +140,10 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker compose up --build
+   docker rm -f ucw-checker-03-ping-checkpoint
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
    ```
 
 4. Run the Python script to check your output:
@@ -206,8 +209,13 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
 
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
@@ -230,8 +238,10 @@ async fn main() -> Result<()> {
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    println!("Dialing: {}", remote_addr);
-    swarm.dial(remote_addr)?;
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
 
     loop {
         tokio::select! {

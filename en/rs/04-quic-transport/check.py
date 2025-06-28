@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Check script for Lesson 4: QUIC Transport
-Validates that the student's solution can connect using QUIC transport.
+Validates that the student's solution can connect with QUIC and ping remote peers and measure round-trip times.
 """
 
 import subprocess
@@ -27,141 +27,131 @@ def validate_peer_id(peer_id_str):
     
     return True, f"Valid peer ID format: {peer_id_str}"
 
-def validate_quic_multiaddr(addr_str):
-    """Validate that the address string looks like a valid QUIC multiaddr"""
+def validate_multiaddr(addr_str):
+    """Validate that the address string looks like a valid multiaddr"""
     # Basic multiaddr validation - should start with /ip4/ or /ip6/
     if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
         return False, f"Invalid multiaddr format: {addr_str}"
     
-    # Should contain /udp/ for QUIC transport
-    if "/udp/" not in addr_str:
-        return False, f"Missing UDP transport in QUIC multiaddr: {addr_str}"
-    
-    # Should contain /quic-v1 for QUIC protocol
-    if "/quic-v1" not in addr_str:
-        return False, f"Missing QUIC protocol in multiaddr: {addr_str}"
-    
-    return True, f"Valid QUIC multiaddr: {addr_str}"
+    # Should contain /tcp for TCP transport or /quic-v1 for QUIC transport
+    if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
+        return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
+      
+    return True, f"Valid multiaddr: {addr_str}"
 
 def check_output():
-    """Check the output log for expected QUIC transport functionality"""
-    if not os.path.exists("stdout.log"):
-        print("x stdout.log file not found")
+    """Check the output log for expected TCP transport functionality"""
+    if not os.path.exists("checker.log"):
+        print("x checker.log file not found")
         return False
     
     try:
-        with open("stdout.log", "r") as f:
+        with open("checker.log", "r") as f:
             output = f.read()
         
         print("i Checking QUIC transport functionality...")
         
         if not output.strip():
-            print("x stdout.log is empty - application may have failed to start")
+            print("x checker.log is empty - application may have failed to start")
             return False
-        
-        # Check for startup message
-        if "Starting Universal Connectivity Application".lower() not in output.lower():
-            print("x Missing startup message. Expected: 'Starting Universal Connectivity Application...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        print("v Found startup message")
-        
-        # Check for peer ID output
-        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
-        peer_id_match = re.search(peer_id_pattern, output)
-        
-        if not peer_id_match:
-            print("x Missing peer ID output. Expected format: 'Local peer id: 12D3KooW...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        peer_id = peer_id_match.group(1)
-        print(f"v Found peer ID: {peer_id}")
 
-        # Validate the peer ID format
-        valid, message = validate_peer_id(peer_id)
+        # a correct solution causes the checker to output a sequence of messages like the following:
+        # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
+        # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
+        # ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
+        # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+
+        # check for:
+        #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
+        incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
+        incoming_matches = re.search(incoming_pattern, output)
+        if not incoming_matches:
+            print("x No incoming dial received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        t = incoming_matches.group(1)
+        valid, t_message = validate_multiaddr(t)
         if not valid:
-            print(f"x {message}")
+            print(f"x {t_message}")
             return False
-
-        print(f"v {message}")
         
-        # Check for dialing QUIC multiaddr
-        dial_multiaddr_pattern = r"Dialing: ([/\w\.:]+)"
-        dial_multiaddr_matches = re.search(dial_multiaddr_pattern, output)
-        
-        if not dial_multiaddr_matches:
-            print("x No dialed multiaddr found. Expected format: 'Dialing: /ip4/.../udp/.../quic-v1'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-
-        multiaddr = dial_multiaddr_matches.group(1)
-        valid, message = validate_quic_multiaddr(multiaddr)
+        f = incoming_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
         if not valid:
-            print(f"x {message}")
+            print(f"x {f_message}")
             return False
-        
-        print(f"v {message}")
 
-        # Check for "Connected to: {peer_id}" message via QUIC
-        connected_pattern = rf"Connected to: (12D3KooW[A-Za-z0-9]+) via {re.escape(multiaddr)}"
-        connected_match = re.search(connected_pattern, output)
-        if not connected_match:
-            print(f"x Missing QUIC connection message")
-            print(f"i Expected pattern: {connected_pattern}")
+        print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
+
+        # check for:
+        #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
+        connected_matches = re.search(connected_pattern, output)
+        if not connected_matches:
+            print("x No connection established")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        remote_peer_id = connected_match.group(1)
-        print(f"v Found QUIC connection to peer: {remote_peer_id}")
-
-        # Check for ping messages with round-trip time over QUIC
-        ping_pattern = rf"Received a ping from {re.escape(remote_peer_id)}, round trip time: (\d+) ms"
-        ping_matches = re.findall(ping_pattern, output)
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
         
+        f = connected_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
+        if not valid:
+            print(f"x {f_message}")
+            return False
+
+        print(f"v Connection established with {peerid_message} at {f_message}")
+
+        # check for:
+        #   ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
+        ping_pattern = r"ping,(12D3KooW[A-Za-z0-9]+),(\d+\s*ms)"
+        ping_matches = re.search(ping_pattern, output)
         if not ping_matches:
-            print(f"x Missing ping messages over QUIC. Expected format: 'Received a ping from {remote_peer_id}, round trip time: X ms'")
+            print("x No ping received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        peerid = ping_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        ms = ping_matches.group(2)
+
+        print(f"v Ping received from {peerid_message} with RTT {ms}")
+
+        # check for:
+        #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
+        closed_matches = re.search(closed_pattern, output)
+        if not closed_matches:
+            print("x Connection closure not detected")
             print(f"i Actual output: {repr(output)}")
             return False
         
-        print(f"v Found {len(ping_matches)} ping messages over QUIC")
-        
-        # Validate that we have reasonable round-trip times
-        valid_rtts = []
-        for rtt_str in ping_matches:
-            try:
-                rtt = int(rtt_str)
-                if 0 <= rtt <= 10000:  # Reasonable range: 0-10 seconds
-                    valid_rtts.append(rtt)
-                else:
-                    print(f"x Unreasonable round-trip time: {rtt} ms")
-                    return False
-            except ValueError:
-                print(f"x Invalid round-trip time format: {rtt_str}")
-                return False
-        
-        if valid_rtts:
-            avg_rtt = sum(valid_rtts) / len(valid_rtts)
-            print(f"v Average round-trip time over QUIC: {avg_rtt:.1f} ms")
-        
-        # Check that application runs for reasonable time without crashing
-        lines = output.strip().split('\n')
-        if len(lines) < 4:  # Should have startup, peer id, dialing, connection, and ping messages
-            print("x Application seems to have crashed too quickly")
-            print(f"i Output lines: {lines}")
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
             return False
         
-        print("v Application started successfully with QUIC transport")
-        
+        print(f"v Connection {peerid_message} closed gracefully")
+
         return True
         
     except Exception as e:
-        print(f"x Error reading stdout.log: {e}")
+        print(f"x Error reading checker.log: {e}")
         return False
 
 def main():
     """Main check function"""
-    print("i Checking Lesson 4: QUIC Transport")
+    print("i Checking Lesson 3: Ping Checkpoint 🏆")
     print("i " + "=" * 50)
     
     try:
@@ -170,13 +160,13 @@ def main():
             return False
         
         print("i " + "=" * 50)
-        print("y QUIC transport lesson completed successfully!")
+        print("y Ping checkpoint completed successfully! 🎉")
         print("i You have successfully:")
-        print("i • Configured multi-transport libp2p node (TCP + QUIC)")
-        print("i • Connected to remote peer using QUIC transport")
-        print("i • Sent and received ping messages over QUIC")
-        print("i • Experienced modern UDP-based connectivity")
-        print("Ready for Lesson 5: Identify Checkpoint!")
+        print("i • Configured ping protocol with custom intervals")
+        print("i • Established bidirectional connectivity")
+        print("i • Measured round-trip times between peers")
+        print("i • Reached your first checkpoint!")
+        print("Ready for Lesson 4: QUIC Transport!")
         
         return True
         

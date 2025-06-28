@@ -1,6 +1,6 @@
 # Lesson 4: QUIC Transport
 
-Now that you understand TCP transport, let's explore QUIC - a modern UDP-based transport protocol that provides built-in encryption and multiplexing. You'll learn about libp2p's multi-transport capabilities by running both TCP and QUIC simultaneously.
+Now that you understand TCP transport, let's explore QUIC - a modern UDP-based transport protocol that provides built-in encryption and multiplexing. You'll learn about libp2p's multi-transport capabilities by connecting to a remote peer with both TCP and QUIC simultaneously.
 
 ## Learning Objectives
 
@@ -22,7 +22,8 @@ QUIC (Quick UDP Internet Connections) is a modern transport protocol that offers
 
 ## Transport Comparison
 
-**TCP Stack:**
+Remember back in Lesson 2, you learned that the libp2p stack looks like the following when using TCP, Noise, and Yamux:
+
 ```
 Application protocols (ping, gossipsub, etc.)
                     ↕
@@ -35,7 +36,8 @@ Application protocols (ping, gossipsub, etc.)
                 Network (IP)
 ```
 
-**QUIC Stack:**
+In this lesson you will add the ability to connect to remote peers using the QUIC transport. Because it has integrated encryption and multiplexing, the libp2p stack looks like the following when using QUIC:
+
 ```
 Application protocols (ping, gossipsub, etc.)
                    ↕
@@ -68,27 +70,19 @@ libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "
 
 Note the addition of the "quic" feature.
 
-### Step 2: Add QUIC Import
+### Step 2: Configure Multi-Transport Swarm
 
-Add the QUIC import to your existing imports:
-
-```rust
-use libp2p::{noise, tcp, quic, yamux, Multiaddr, SwarmBuilder};
-```
-
-### Step 3: Configure Multi-Transport Swarm
-
-Replace your TCP-only transport configuration with a multi-transport setup:
+Modify your code for building the swarm by adding in `.with_quic()` just after the `.with_tcp(...)`. That will initialize the QUIC transport infrastructure and add it to the swarm.
 
 ```rust
 let mut swarm = SwarmBuilder::with_existing_identity(local_key)
     .with_tokio()
-    .with_quic()
     .with_tcp(
         tcp::Config::default(),
         noise::Config::new,
         yamux::Config::default,
     )?
+    .with_quic()
     .with_behaviour(|_| Behaviour {
         ping: ping::Behaviour::new(
             ping::Config::new()
@@ -100,18 +94,31 @@ let mut swarm = SwarmBuilder::with_existing_identity(local_key)
     .build();
 ```
 
-### Step 4: Connect Using QUIC
+### Step 3: Connect Using QUIC
 
-The remote peer address will be a QUIC multiaddress (e.g., `/ip4/172.16.16.17/udp/9092/quic-v1`). Use the same dialing code:
+You will use the same dialing code from Lesson 2 and 3, but this time, the `REMOTE_PEERS` environment variable will be initialized with a TCP multiaddr and a QUIC multiaddr, so without any other code changes, your peer will dial the remote peer with both and establish two separate connections, one with TCP, Noise and Yamux, and the other with QUIC. QUIC Multiaddrs look like: `/ip4/172.16.16.17/udp/9091/quic-v1`
 
 ```rust
-let remote_peer = env::var("REMOTE_PEER")?;
-let remote_addr: Multiaddr = remote_peer.parse()?;
-println!("Dialing: {}", remote_addr);
-swarm.dial(remote_addr)?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+
+    // ...
+
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
+
+    // ...
+}
 ```
 
-### Step 5: Handle Connection Events
+### Step 4: Handle Connection Events
 
 Your existing event handling code will work for both TCP and QUIC connections. The multiaddress in the connection events will show which transport was used.
 
@@ -123,12 +130,20 @@ Your existing event handling code will work for both TCP and QUIC connections. T
    export LESSON_PATH=en/rs/04-quic-transport
    ```
 
-2. Run with Docker Compose:
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
+
+3. Run with Docker Compose:
    ```bash
-   docker compose up --build
+   docker rm -f ucw-checker-04-quic-transport
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
    ```
 
-3. Check your output:
+4. Run the Python script to check your output:
    ```bash
    python check.py
    ```
@@ -149,12 +164,12 @@ Your implementation should:
 The order of transport configuration in the SwarmBuilder matters. QUIC should be configured before TCP:
 
 ```rust
-.with_quic()
 .with_tcp(
     tcp::Config::default(),
     noise::Config::new,
     yamux::Config::default,
 )?
+.with_quic()
 ```
 
 ## Hint - QUIC Multiaddress Format
@@ -171,7 +186,7 @@ Here's the complete working solution:
 use anyhow::Result;
 use futures::StreamExt;
 use libp2p::identity;
-use libp2p::{noise, tcp, quic, yamux, Multiaddr, SwarmBuilder};
+use libp2p::{noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
     ping,
     swarm::{NetworkBehaviour, SwarmEvent},
@@ -188,8 +203,13 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
 
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
@@ -197,12 +217,12 @@ async fn main() -> Result<()> {
 
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
-        .with_quic()
         .with_tcp(
             tcp::Config::default(),
             noise::Config::new,
             yamux::Config::default,
         )?
+        .with_quic()
         .with_behaviour(|_| Behaviour {
             ping: ping::Behaviour::new(
                 ping::Config::new()
@@ -213,8 +233,10 @@ async fn main() -> Result<()> {
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    println!("Dialing: {}", remote_addr);
-    swarm.dial(remote_addr)?;
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
 
     loop {
         tokio::select! {

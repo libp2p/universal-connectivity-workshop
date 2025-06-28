@@ -27,6 +27,18 @@ def validate_peer_id(peer_id_str):
     
     return True, f"Valid peer ID format: {peer_id_str}"
 
+def validate_multiaddr(addr_str):
+    """Validate that the address string looks like a valid multiaddr"""
+    # Basic multiaddr validation - should start with /ip4/ or /ip6/
+    if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
+        return False, f"Invalid multiaddr format: {addr_str}"
+    
+    # Should contain /tcp for TCP transport or /quic-v1 for QUIC transport
+    if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
+        return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
+     
+    return True, f"Valid multiaddr: {addr_str}"
+
 def check_output():
     """Check the output log for expected gossipsub checkpoint functionality"""
     if not os.path.exists("stdout.log"):

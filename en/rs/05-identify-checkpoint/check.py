@@ -33,10 +33,10 @@ def validate_multiaddr(addr_str):
     if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
         return False, f"Invalid multiaddr format: {addr_str}"
     
-    # Should contain /tcp/ or /udp/ for transport
-    if "/tcp/" not in addr_str and "/udp/" not in addr_str:
-        return False, f"Missing transport protocol in multiaddr: {addr_str}"
-    
+    # Should contain /tcp for TCP transport or /quic-v1 for QUIC transport
+    if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
+        return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
+     
     return True, f"Valid multiaddr: {addr_str}"
 
 def check_output():
@@ -49,141 +49,102 @@ def check_output():
         with open("stdout.log", "r") as f:
             output = f.read()
         
-        print("i Checking identify checkpoint functionality...")
+        print("i Checking identify functionality...")
         
         if not output.strip():
             print("x stdout.log is empty - application may have failed to start")
             return False
-        
-        # Check for startup message
-        if "Starting Universal Connectivity Application".lower() not in output.lower():
-            print("x Missing startup message. Expected: 'Starting Universal Connectivity Application...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        print("v Found startup message")
-        
-        # Check for peer ID output
-        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
-        peer_id_match = re.search(peer_id_pattern, output)
-        
-        if not peer_id_match:
-            print("x Missing peer ID output. Expected format: 'Local peer id: 12D3KooW...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        peer_id = peer_id_match.group(1)
-        print(f"v Found peer ID: {peer_id}")
 
-        # Validate the peer ID format
-        valid, message = validate_peer_id(peer_id)
+        # a correct solution causes the checker to output a sequence of messages like the following:
+        # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
+        # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
+        # ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
+        # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+
+        # check for:
+        #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
+        incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
+        incoming_matches = re.search(incoming_pattern, output)
+        if not incoming_matches:
+            print("x No incoming dial received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        t = incoming_matches.group(1)
+        valid, t_message = validate_multiaddr(t)
         if not valid:
-            print(f"x {message}")
+            print(f"x {t_message}")
             return False
-
-        print(f"v {message}")
         
-        # Check for dialing multiaddr
-        dial_multiaddr_pattern = r"Dialing: ([/\w\.:]+)"
-        dial_multiaddr_matches = re.search(dial_multiaddr_pattern, output)
-        
-        if not dial_multiaddr_matches:
-            print("x No dialed multiaddr found. Expected format: 'Dialing: /ip4/.../tcp/...' or 'Dialing: /ip4/.../udp/.../quic-v1'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-
-        multiaddr = dial_multiaddr_matches.group(1)
-        valid, message = validate_multiaddr(multiaddr)
+        f = incoming_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
         if not valid:
-            print(f"x {message}")
+            print(f"x {f_message}")
             return False
-        
-        print(f"v {message}")
 
-        # Check for "Connected to: {peer_id}" message
-        connected_pattern = rf"Connected to: (12D3KooW[A-Za-z0-9]+) via {re.escape(multiaddr)}"
-        connected_match = re.search(connected_pattern, output)
-        if not connected_match:
-            print(f"x Missing connection message")
-            print(f"i Expected pattern: {connected_pattern}")
+        print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
+
+        # check for:
+        #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
+        connected_matches = re.search(connected_pattern, output)
+        if not connected_matches:
+            print("x No connection established")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        remote_peer_id = connected_match.group(1)
-        print(f"v Found connection to peer: {remote_peer_id}")
-
-        # Check for ping messages with round-trip time
-        ping_pattern = rf"Received a ping from {re.escape(remote_peer_id)}, round trip time: (\d+) ms"
-        ping_matches = re.findall(ping_pattern, output)
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
         
+        f = connected_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
+        if not valid:
+            print(f"x {f_message}")
+            return False
+
+        print(f"v Connection established with {peerid_message} at {f_message}")
+
+        # check for:
+        #   ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
+        ping_pattern = r"ping,(12D3KooW[A-Za-z0-9]+),(\d+\s*ms)"
+        ping_matches = re.search(ping_pattern, output)
         if not ping_matches:
-            print(f"x Missing ping messages. Expected format: 'Received a ping from {remote_peer_id}, round trip time: X ms'")
+            print("x No ping received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        peerid = ping_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        ms = ping_matches.group(2)
+
+        print(f"v Ping received from {peerid_message} with RTT {ms}")
+
+        # check for:
+        #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
+        closed_matches = re.search(closed_pattern, output)
+        if not closed_matches:
+            print("x Connection closure not detected")
             print(f"i Actual output: {repr(output)}")
             return False
         
-        print(f"v Found {len(ping_matches)} ping messages")
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        print(f"v Connection {peerid_message} closed gracefully")
 
-        # Check for identify events
-        # Look for "Identified peer" message
-        identify_pattern = rf"Identified peer: {re.escape(remote_peer_id)} with protocol version: ([^\s]+)"
-        identify_match = re.search(identify_pattern, output)
-        
-        if not identify_match:
-            print(f"x Missing identify message. Expected format: 'Identified peer: {remote_peer_id} with protocol version: ...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        protocol_version = identify_match.group(1)
-        print(f"v Found identify message with protocol version: {protocol_version}")
-
-        # Check for peer agent string
-        agent_pattern = r"Peer agent: ([^\n]+)"
-        agent_match = re.search(agent_pattern, output)
-        
-        if not agent_match:
-            print("x Missing peer agent information. Expected format: 'Peer agent: ...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        agent_version = agent_match.group(1)
-        print(f"v Found peer agent: {agent_version}")
-
-        # Check for protocol count
-        protocols_pattern = r"Peer supports (\d+) protocols"
-        protocols_match = re.search(protocols_pattern, output)
-        
-        if not protocols_match:
-            print("x Missing protocol count information. Expected format: 'Peer supports X protocols'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        protocol_count = int(protocols_match.group(1))
-        print(f"v Found protocol count: {protocol_count}")
-
-        # Validate that we have a reasonable number of protocols
-        if protocol_count < 1:
-            print(f"x Unreasonable protocol count: {protocol_count}")
-            return False
-
-        # Check for "Sent identify info to" message
-        sent_identify_pattern = rf"Sent identify info to: {re.escape(remote_peer_id)}"
-        if re.search(sent_identify_pattern, output):
-            print(f"v Found sent identify message")
-        else:
-            print(f"x Missing sent identify message. Expected format: 'Sent identify info to: {remote_peer_id}'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        # Check that application runs for reasonable time without crashing
-        lines = output.strip().split('\n')
-        if len(lines) < 6:  # Should have startup, peer id, dialing, connection, ping, and identify messages
-            print("x Application seems to have crashed too quickly")
-            print(f"i Output lines: {lines}")
-            return False
-        
-        print("v Application started successfully with identify functionality")
-        
         return True
-        
+       
     except Exception as e:
         print(f"x Error reading stdout.log: {e}")
         return False

@@ -35,10 +35,10 @@ def validate_multiaddr(addr_str):
     if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
         return False, f"Invalid multiaddr format: {addr_str}"
     
-    # Should contain /tcp/ for TCP transport
-    if not "/tcp/" in addr_str or "/quic-v1/" in addr_str:
+    # Should contain /tcp for TCP transport or /quic-v1 for QUIC transport
+    if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
         return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
-    
+     
     return True, f"{addr_str}"
 
 def check_output():
@@ -65,7 +65,7 @@ def check_output():
 
         # check for:
         #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
-        incoming_pattern = r"incoming,([/\w\.:]+),([/\w\.:]+)"
+        incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
         incoming_matches = re.search(incoming_pattern, output)
         if not incoming_matches:
             print("x No incoming dial received")
@@ -88,7 +88,7 @@ def check_output():
 
         # check for:
         #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
-        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:]+)"
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
         connected_matches = re.search(connected_pattern, output)
         if not connected_matches:
             print("x No connection established")

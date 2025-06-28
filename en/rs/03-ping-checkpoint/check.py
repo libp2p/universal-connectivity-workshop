@@ -33,10 +33,10 @@ def validate_multiaddr(addr_str):
     if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
         return False, f"Invalid multiaddr format: {addr_str}"
     
-    # Should contain /tcp/ for TCP transport
-    if "/tcp/" not in addr_str:
-        return False, f"Missing TCP transport in multiaddr: {addr_str}"
-    
+    # Should contain /tcp for TCP transport or /quic-v1 for QUIC transport
+    if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
+        return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
+     
     return True, f"Valid multiaddr: {addr_str}"
 
 def check_output():
@@ -49,7 +49,7 @@ def check_output():
         with open("checker.log", "r") as f:
             output = f.read()
         
-        print("i Checking TCP transport functionality...")
+        print("i Checking ping functionality...")
         
         if not output.strip():
             print("x checker.log is empty - application may have failed to start")
