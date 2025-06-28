@@ -254,19 +254,12 @@ async fn main() -> Result<()> {
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
-                            ping::Event {
-                                peer,
-                                result: Ok(ping::Success::Ping { rtt }),
-                            } => {
-                                println!("Received a ping from {}, round trip time: {} ms", peer, rtt.as_millis());
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            ping::Event {
-                                peer,
-                                result: Err(failure),
-                            } => {
-                                println!("Ping failed to {}: {:?}", peer, failure);
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
-                            _ => {}
                         }
                     }
                 }

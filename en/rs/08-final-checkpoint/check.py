@@ -43,18 +43,18 @@ def validate_multiaddr(addr_str):
 
 def check_output():
     """Check the output log for expected final checkpoint functionality"""
-    if not os.path.exists("stdout.log"):
-        print("x stdout.log file not found")
+    if not os.path.exists("checker.log"):
+        print("x checker.log file not found")
         return False
     
     try:
-        with open("stdout.log", "r") as f:
+        with open("checker.log", "r") as f:
             output = f.read()
         
         print("i Checking final checkpoint functionality...")
         
         if not output.strip():
-            print("x stdout.log is empty - application may have failed to start")
+            print("x checker.log is empty - application may have failed to start")
             return False
         
         # Check for startup message
@@ -142,7 +142,7 @@ def check_output():
         return True
         
     except Exception as e:
-        print(f"x Error reading stdout.log: {e}")
+        print(f"x Error reading checker.log: {e}")
         return False
 
 def main():

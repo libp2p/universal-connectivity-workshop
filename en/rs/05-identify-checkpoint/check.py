@@ -41,24 +41,24 @@ def validate_multiaddr(addr_str):
 
 def check_output():
     """Check the output log for expected identify checkpoint functionality"""
-    if not os.path.exists("stdout.log"):
-        print("x stdout.log file not found")
+    if not os.path.exists("checker.log"):
+        print("x checker.log file not found")
         return False
     
     try:
-        with open("stdout.log", "r") as f:
+        with open("checker.log", "r") as f:
             output = f.read()
         
         print("i Checking identify functionality...")
         
         if not output.strip():
-            print("x stdout.log is empty - application may have failed to start")
+            print("x checker.log is empty - application may have failed to start")
             return False
 
         # a correct solution causes the checker to output a sequence of messages like the following:
         # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
         # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
-        # ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
+        # identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
         # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
 
         # check for:
@@ -108,23 +108,24 @@ def check_output():
         print(f"v Connection established with {peerid_message} at {f_message}")
 
         # check for:
-        #   ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
-        ping_pattern = r"ping,(12D3KooW[A-Za-z0-9]+),(\d+\s*ms)"
-        ping_matches = re.search(ping_pattern, output)
-        if not ping_matches:
-            print("x No ping received")
+        #   identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
+        identify_pattern = r"identify,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+),([/\w\.:-]+)"
+        identify_matches = re.search(identify_pattern, output)
+        if not identify_matches:
+            print("x No identify received")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        peerid = ping_matches.group(1)
+        peerid = identify_matches.group(1)
         valid, peerid_message = validate_peer_id(peerid)
         if not valid:
             print(f"x {peerid_message}")
             return False
         
-        ms = ping_matches.group(2)
+        protocol = identify_matches.group(2)
+        agent = identify_matches.group(3)
 
-        print(f"v Ping received from {peerid_message} with RTT {ms}")
+        print(f"v Identify received from {peerid_message}: protocol={protocol}, agent={agent}")
 
         # check for:
         #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
@@ -146,7 +147,7 @@ def check_output():
         return True
        
     except Exception as e:
-        print(f"x Error reading stdout.log: {e}")
+        print(f"x Error reading checker.log: {e}")
         return False
 
 def main():

@@ -27,7 +27,7 @@ Building on your QUIC transport implementation from Lesson 4, you need to:
 
 1. **Add Identify Behavior**: Include `identify::Behaviour` in your `NetworkBehaviour` struct
 2. **Configure Identify Settings**: Set up identify with the IPFS protocol and Universal Connectivity agent string
-3. **Connect to Remote Peer**: Dial the peer specified in `REMOTE_PEER` environment variable
+3. **Connect to Remote Peer**: Dial the peers specified in `REMOTE_PEERS` environment variable
 4. **Handle Identify Events**: Process identification events and display peer information
 
 ## Step-by-Step Instructions
@@ -48,7 +48,7 @@ Note the addition of the "identify" feature.
 Add the identify import to your existing imports:
 
 ```rust
-use libp2p::{identify, noise, tcp, quic, yamux, Multiaddr, SwarmBuilder};
+use libp2p::{identify, noise, tcp, yamux, Multiaddr, SwarmBuilder};
 ```
 
 ### Step 3: Update Your NetworkBehaviour
@@ -63,7 +63,16 @@ struct Behaviour {
 }
 ```
 
-### Step 4: Configure Identify in the Swarm Builder
+### Step 4: Set Up Identify String Constants
+
+When you use identify there are two strings you must configure it with. One is the protocol version and the other is the agent identification string. It is typically a good idea to setup constant values for these so that you can reference them in multiple places and be certain that the values are the same everywhere. Let's define the constants at the top of your file:
+
+```rust
+const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
+const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
+```
+
+### Step 5: Configure Identify in the Swarm Builder
 
 When creating your behavior, configure the identify protocol:
 
@@ -75,49 +84,62 @@ When creating your behavior, configure the identify protocol:
             .with_timeout(Duration::from_secs(5))
     ),
     identify: identify::Behaviour::new(
-        identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-            .with_agent_version("universal-connectivity/0.1.0".to_string())
+        identify::Config::new(IDENTIFY_PROTOCOL_VERSION.to_string(), key.public())
+            .with_agent_version(AGENT_VERSION.to_string())
     ),
 })?
 ```
 
 Note that we now use the key parameter in the closure to configure identify.
 
-### Step 5: Handle Identify Events
+### Step 6: Handle Identify Events
 
-In your event loop, add handling for identify events alongside your existing ping events:
+Just like in previous lessons, we need to add the identify protocol event handlers. In your event loop, add handling for identify events alongside your existing ping events:
 
 ```rust
-SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
-    BehaviourEvent::Ping(ping_event) => {
-        match ping_event {
-            ping::Event {
-                peer,
-                result: Ok(ping::Success::Ping { rtt }),
-            } => {
-                println!("Received a ping from {}, round trip time: {} ms", peer, rtt.as_millis());
+loop {
+    tokio::select! {
+        Some(event) = swarm.next() => match event {
+            SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
+                println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
             }
-            ping::Event {
-                peer,
-                result: Err(failure),
-            } => {
-                println!("Ping failed to {}: {:?}", peer, failure);
+            SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
+                if let Some(err) = cause {
+                    println!("Connection to {peer_id} closed with error: {err}");
+                } else {
+                    println!("Connection to {peer_id} closed gracefully");
+                }
             }
-            _ => {}
-        }
-    }
-    BehaviourEvent::Identify(identify_event) => {
-        match identify_event {
-            identify::Event::Received { peer_id, info } => {
-                println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
-                println!("Peer agent: {}", info.agent_version);
-                println!("Peer supports {} protocols", info.protocols.len());
+            SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
+                BehaviourEvent::Ping(ping_event) => {
+                    match ping_event {
+                        ping::Event { peer, result: Ok(rtt), .. } => {
+                            println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
+                        }
+                        ping::Event { peer, result: Err(failure), .. } => {
+                            println!("Ping failed to {peer}: {failure:?}");
+                        }
+                    }
+                }
+                BehaviourEvent::Identify(identify_event) => {
+                    match identify_event {
+                        identify::Event::Received { peer_id, info } => {
+                            println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
+                            println!("Peer agent: {}", info.agent_version);
+                            println!("Peer supports {} protocols", info.protocols.len());
+                        }
+                        identify::Event::Sent { peer_id } => {
+                            println!("Sent identify info to: {}", peer_id);
+                        }
+                        identify::Event::Error { peer_id, error } => {
+                            println!("Identify error with {}: {:?}", peer_id, error);
+                        }
+                        _ => {}
+                    }
+                }
             }
-            identify::Event::Sent { peer_id } => {
-                println!("Sent identify info to: {}", peer_id);
-            }
-            identify::Event::Error { peer_id, error } => {
-                println!("Identify error with {}: {:?}", peer_id, error);
+            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                println!("Failed to connect to {peer_id:?}: {error}");
             }
             _ => {}
         }
@@ -133,12 +155,20 @@ SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
    export LESSON_PATH=en/rs/05-identify-checkpoint
    ```
 
-2. Run with Docker Compose:
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
+
+3. Run with Docker Compose:
    ```bash
-   docker compose up --build
+   docker rm -f ucw-checker-05-identiy-checkpoint
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
    ```
 
-3. Check your output:
+4. Check your output:
    ```bash
    python check.py
    ```
@@ -194,6 +224,9 @@ use libp2p::{
 use std::env;
 use std::time::Duration;
 
+const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
+const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
+
 #[derive(NetworkBehaviour)]
 struct Behaviour {
     ping: ping::Behaviour,
@@ -204,8 +237,13 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
 
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
@@ -226,15 +264,17 @@ async fn main() -> Result<()> {
                     .with_timeout(Duration::from_secs(5))
             ),
             identify: identify::Behaviour::new(
-                identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-                    .with_agent_version("universal-connectivity/0.1.0".to_string())
+                identify::Config::new(IDENTIFY_PROTOCOL_VERSION.to_string(), key.public())
+                    .with_agent_version(AGENT_VERSION.to_string())
             ),
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    println!("Dialing: {}", remote_addr);
-    swarm.dial(remote_addr)?;
+    // Dial all of the remote peer Multiaddrs
+    for addr in remote_addrs.into_iter() {
+        swarm.dial(addr)?;
+    }
 
     loop {
         tokio::select! {
@@ -252,19 +292,12 @@ async fn main() -> Result<()> {
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
-                            ping::Event {
-                                peer,
-                                result: Ok(ping::Success::Ping { rtt }),
-                            } => {
-                                println!("Received a ping from {}, round trip time: {} ms", peer, rtt.as_millis());
+                            ping::Event { peer, result: Ok(rtt), .. } => {
+                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
                             }
-                            ping::Event {
-                                peer,
-                                result: Err(failure),
-                            } => {
-                                println!("Ping failed to {}: {:?}", peer, failure);
+                            ping::Event { peer, result: Err(failure), .. } => {
+                                println!("Ping failed to {peer}: {failure:?}");
                             }
-                            _ => {}
                         }
                     }
                     BehaviourEvent::Identify(identify_event) => {

@@ -1,13 +1,14 @@
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{identify, noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
-    ping,
+    identify, identity, ping,
     swarm::{NetworkBehaviour, SwarmEvent},
+    Multiaddr, SwarmBuilder,
 };
-use std::env;
-use std::time::Duration;
+use std::{env, str::FromStr, time::Duration};
+
+const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
+const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
 
 // Define a custom network behaviour that includes ping and identify functionality
 #[derive(NetworkBehaviour)]
@@ -18,22 +19,18 @@ struct Behaviour {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Starting Universal Connectivity Application...");
-
-    let remote_peer = env::var("REMOTE_PEER")?;
-    let remote_addr: Multiaddr = remote_peer.parse()?;
+    let remote_peers = env::var("REMOTE_PEERS")?;
+    let remote_addrs: Vec<Multiaddr> = remote_peers
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(Multiaddr::from_str)
+        .collect::<Result<_, _>>()?;
 
     let local_key = identity::Keypair::generate_ed25519();
-    let local_peer_id = identity::PeerId::from(local_key.public());
-    println!("Local peer id: {local_peer_id}");
 
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
-        .with_tcp(
-            tcp::Config::default(),
-            noise::Config::new,
-            yamux::Config::default,
-        )?
         .with_quic()
         .with_behaviour(|key| Behaviour {
             ping: ping::Behaviour::new(
@@ -42,64 +39,61 @@ async fn main() -> Result<()> {
                     .with_timeout(Duration::from_secs(5)),
             ),
             identify: identify::Behaviour::new(
-                identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-                    .with_agent_version("universal-connectivity/0.1.0".to_string()),
+                identify::Config::new(IDENTIFY_PROTOCOL_VERSION.to_string(), key.public())
+                    .with_agent_version(AGENT_VERSION.to_string()),
             ),
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    swarm.listen_on(remote_addr)?;
+    // listen on all addresses
+    for addr in remote_addrs.into_iter() {
+        swarm.listen_on(addr)?;
+    }
 
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::NewListenAddr { address, .. } => {
-                    println!("Listening on: {address}");
-                }
                 SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
-                    println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
+                    println!("connected,{peer_id},{}", endpoint.get_remote_address());
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
-                    if let Some(err) = cause {
-                        println!("Connection to {peer_id} closed with error: {err}");
+                    if let Some(error) = cause {
+                        println!("error,{error}");
                     } else {
-                        println!("Connection to {peer_id} closed gracefully");
+                        println!("closed,{peer_id}");
                     }
+                    return Ok(())
                 }
                 SwarmEvent::IncomingConnection { local_addr, send_back_addr, .. } => {
-                    println!("Incoming connection to: {local_addr}, from: {send_back_addr}");
+                    println!("incoming,{local_addr},{send_back_addr}");
                 }
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
-                    BehaviourEvent::Ping(ping_event) => {
-                        match ping_event {
-                            ping::Event { peer, result: Ok(rtt), .. } => {
-                                println!("Received a ping from {peer}, round trip time: {} ms", rtt.as_millis());
+                    BehaviourEvent::Ping(ping::Event { peer, result, .. }) => {
+                        match result {
+                            Ok(rtt) => {
+                                println!("ping,{peer},{} ms", rtt.as_millis());
                             }
-                            ping::Event { peer, result: Err(failure), .. } => {
-                                println!("Ping failed to {peer}: {failure:?}");
+                            Err(failure) => {
+                                println!("error,{failure}");
                             }
                         }
                     }
                     BehaviourEvent::Identify(identify_event) => {
                         match identify_event {
-                            identify::Event::Received { peer_id, info, .. } => {
-                                println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
-                                println!("Peer agent: {}", info.agent_version);
-                                println!("Peer supports {} protocols", info.protocols.len());
+                            identify::Event::Received { peer_id, connection_id, info } => {
+                                println!("identify,{peer_id},{},{}", info.protocol_version, info.agent_version);
+                                swarm.close_connection(connection_id);
                             }
-                            identify::Event::Sent { peer_id, .. } => {
-                                println!("Sent identify info to: {peer_id}");
-                            }
-                            identify::Event::Error { peer_id, error, .. } => {
-                                println!("Identify error with {peer_id}: {error:?}");
+                            identify::Event::Error { error, .. } => {
+                                println!("error,{error}");
                             }
                             _ => {}
                         }
                     }
                 }
-                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                    println!("Failed to connect to {peer_id:?}: {error}");
+                SwarmEvent::OutgoingConnectionError { error, .. } => {
+                    println!("error,{error}");
                 }
                 _ => {}
             }
