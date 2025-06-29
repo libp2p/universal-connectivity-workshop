@@ -1,10 +1,10 @@
 0. **Prerequisites**
 
-| Tool       | Recommended version |
-| ---------- | ------------------- | 
-| Node       | ≥ 18 LTS            | 
-| npm        | ≥ 9                 |
-| TypeScript | ≥ 5.4               |
+| Tool                  | Recommended version |
+| ----------------------| ------------------- | 
+| Node                  | ≥ 18 LTS            | 
+| npm                   | ≥ 9                 |
+| TypeScript (optional) | ≥ 5.4               |
 
 
 1. **Install Dependencies**
