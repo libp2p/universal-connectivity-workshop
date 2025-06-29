@@ -41,11 +41,11 @@ Create a JavaScript/TypeScript application that:
 
 0. **Prerequisites**
 
-| Tool       | Recommended version |
-| ---------- | ------------------- | 
-| Node       | ≥ 18 LTS            | 
-| npm        | ≥ 9                 |
-| TypeScript | ≥ 5.4               |
+| Tool                  | Recommended version |
+| ----------------------| ------------------- | 
+| Node                  | ≥ 18 LTS            | 
+| npm                   | ≥ 9                 |
+| TypeScript (optional) | ≥ 5.4               |
 
 
 1. **Install Dependencies**
@@ -53,7 +53,7 @@ First, initialize your project and add the required dependencies:
 
 ```bash
 npm init -y
-npm install libp2p @libp2p/tcp @libp2p/ping @chainsafe/libp2p-noise @chainsafe/libp2p-yamux
+npm install libp2p @libp2p/tcp @libp2p/ping @chainsafe/libp2p-noise @chainsafe/libp2p-yamux @libp2p/ping
 ```
 
 For TypeScript support (optional):
@@ -66,6 +66,7 @@ npx tsc --init
 2. **Set Up Your Main Function and Print Startup Message``
 
 ```javascript
+// index.js
 import { createLibp2p } from 'libp2p';
 import { tcp } from '@libp2p/tcp';
 import { noise } from '@chainsafe/libp2p-noise';
