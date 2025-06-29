@@ -25,7 +25,7 @@ def validate_peer_id(peer_id_str):
         if char not in valid_chars:
             return False, f"Invalid character '{char}' in peer ID. Must be base58 encoded."
     
-    return True, f"Valid peer ID format: {peer_id_str}"
+    return True, f"{peer_id_str}"
 
 def validate_multiaddr(addr_str):
     """Validate that the address string looks like a valid multiaddr"""
@@ -37,7 +37,7 @@ def validate_multiaddr(addr_str):
     if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
         return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
      
-    return True, f"Valid multiaddr: {addr_str}"
+    return True, f"{addr_str}"
 
 def check_output():
     """Check the output log for expected gossipsub checkpoint functionality"""
@@ -55,122 +55,133 @@ def check_output():
             print("x checker.log is empty - application may have failed to start")
             return False
         
-        # Check for startup message
-        if "Starting Universal Connectivity Application".lower() not in output.lower():
-            print("x Missing startup message. Expected: 'Starting Universal Connectivity Application...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        print("v Found startup message")
-        
-        # Check for peer ID output
-        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
-        peer_id_match = re.search(peer_id_pattern, output)
-        
-        if not peer_id_match:
-            print("x Missing peer ID output. Expected format: 'Local peer id: 12D3KooW...'")
-            print(f"i Actual output: {repr(output)}")
-            return False
-        
-        peer_id = peer_id_match.group(1)
-        print(f"v Found peer ID: {peer_id}")
+        # a correct solution causes the checker to output a sequence of messages like the following:
+        # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
+        # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
+        # identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
+        # subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity,Hello from 12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE!
+        # msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from Universal Connectivity!
+        # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
 
-        # Validate the peer ID format
-        valid, message = validate_peer_id(peer_id)
+        # check for:
+        #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
+        incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
+        incoming_matches = re.search(incoming_pattern, output)
+        if not incoming_matches:
+            print("x No incoming dial received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        t = incoming_matches.group(1)
+        valid, t_message = validate_multiaddr(t)
         if not valid:
-            print(f"x {message}")
-            return False
-
-        print(f"v {message}")
-
-        # Check for topic subscriptions
-        expected_topics = [
-            "universal-connectivity",
-            "universal-connectivity-file", 
-            "universal-connectivity-browser-peer-discovery"
-        ]
-        
-        subscribed_topics = []
-        for topic in expected_topics:
-            subscribe_pattern = f"Subscribed to topic: {re.escape(topic)}"
-            if re.search(subscribe_pattern, output):
-                subscribed_topics.append(topic)
-                print(f"v Found subscription to topic: {topic}")
-            else:
-                print(f"x Missing subscription to topic: {topic}")
-                print(f"i Expected pattern: {subscribe_pattern}")
-                return False
-        
-        if len(subscribed_topics) != len(expected_topics):
-            print(f"x Missing topic subscriptions. Expected {len(expected_topics)}, found {len(subscribed_topics)}")
+            print(f"x {t_message}")
             return False
         
-        # Check for dialing multiaddr
-        dial_multiaddr_pattern = r"Dialing: ([/\w\.:]+)"
-        dial_multiaddr_matches = re.search(dial_multiaddr_pattern, output)
-        
-        if not dial_multiaddr_matches:
-            print("x No dialed multiaddr found. Expected format: 'Dialing: /ip4/.../tcp/...' or similar")
+        f = incoming_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
+        if not valid:
+            print(f"x {f_message}")
+            return False
+
+        print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
+
+        # check for:
+        #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
+        connected_matches = re.search(connected_pattern, output)
+        if not connected_matches:
+            print("x No connection established")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        multiaddr = dial_multiaddr_matches.group(1)
-        print(f"v Found dialed multiaddr: {multiaddr}")
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        f = connected_matches.group(2)
+        valid, f_message = validate_multiaddr(f)
+        if not valid:
+            print(f"x {f_message}")
+            return False
 
-        # Check for connection establishment
-        connected_pattern = rf"Connected to: (12D3KooW[A-Za-z0-9]+) via {re.escape(multiaddr)}"
-        connected_match = re.search(connected_pattern, output)
-        if not connected_match:
-            print(f"x Missing connection message")
-            print(f"i Expected pattern: {connected_pattern}")
+        print(f"v Connection established with {peerid_message} at {f_message}")
+
+        # check for:
+        #   identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
+        identify_pattern = r"identify,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+),([/\w\.:-]+)"
+        identify_matches = re.search(identify_pattern, output)
+        if not identify_matches:
+            print("x No identify received")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        remote_peer_id = connected_match.group(1)
-        print(f"v Found connection to peer: {remote_peer_id}")
-
-        # Check for ping messages
-        ping_pattern = rf"Received a ping from {re.escape(remote_peer_id)}, round trip time: (\d+) ms"
-        ping_matches = re.findall(ping_pattern, output)
+        peerid = identify_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
         
-        if ping_matches:
-            print(f"v Found {len(ping_matches)} ping messages")
-        else:
-            print("x Missing ping messages - connection may not be fully established")
+        protocol = identify_matches.group(2)
+        agent = identify_matches.group(3)
+
+        print(f"v Identify received from {peerid_message}: protocol={protocol}, agent={agent}")
+
+        # check for:
+        #   subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity
+        subscribe_pattern = r"subscribe,(12D3KooW[A-Za-z0-9]+),universal-connectivity"
+        subscribe_matches = re.search(subscribe_pattern, output)
+        if not subscribe_matches:
+            print("x No subscribe received")
+            print(f"i Actual output: {repr(output)}")
             return False
 
-        # Check for identify events
-        identify_pattern = rf"Identified peer: {re.escape(remote_peer_id)} with protocol version: ([^\s]+)"
-        if re.search(identify_pattern, output):
-            print("v Found identify message")
-        else:
-            print("x Missing identify message")
+        peerid = subscribe_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
+        
+        print(f"v Gossipsub subscribe received from {peerid_message}: topic=universal-connectivity")
+
+        # check for:
+        #   msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from Universal Connectivity!
+        msg_pattern = r"msg,(12D3KooW[A-Za-z0-9]+),universal-connectivity,(.+)"
+        msg_matches = re.search(msg_pattern, output)
+        if not msg_matches:
+            print("x No msg received")
+            print(f"i Actual output: {repr(output)}")
             return False
 
-        # Check for gossipsub messages (either received or peer subscription events)
-        gossipsub_message_pattern = r"Received message on topic '[^']+': .+ from .+ \(type: .+\)"
-        peer_subscribed_pattern = r"Peer .+ subscribed to topic: .+"
+        peerid = msg_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
+            return False
         
-        gossipsub_messages = re.findall(gossipsub_message_pattern, output)
-        peer_subscriptions = re.findall(peer_subscribed_pattern, output)
-        
-        if gossipsub_messages:
-            print(f"v Found {len(gossipsub_messages)} gossipsub messages")
-        elif peer_subscriptions:
-            print(f"v Found {len(peer_subscriptions)} peer subscription events")
-        else:
-            print("x Missing gossipsub activity. Expected either received messages or peer subscription events")
+        msg = msg_matches.group(2)
+
+        print(f"v Gossipsub message received from {peerid_message}: topic=universal-connectivity, msg={msg}")
+
+        # check for:
+        #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
+        closed_matches = re.search(closed_pattern, output)
+        if not closed_matches:
+            print("x Connection closure not detected")
             print(f"i Actual output: {repr(output)}")
             return False
         
-        # Check that application runs for reasonable time without crashing
-        lines = output.strip().split('\n')
-        if len(lines) < 8:  # Should have startup, peer id, subscriptions, dialing, connection, ping, identify, and gossipsub messages
-            print("x Application seems to have crashed too quickly")
-            print(f"i Output lines: {lines}")
+        peerid = connected_matches.group(1)
+        valid, peerid_message = validate_peer_id(peerid)
+        if not valid:
+            print(f"x {peerid_message}")
             return False
         
-        print("v Application started successfully with gossipsub functionality")
-        
+        print(f"v Connection {peerid_message} closed gracefully")
+
         return True
         
     except Exception as e:

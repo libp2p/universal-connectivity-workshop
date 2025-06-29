@@ -102,6 +102,9 @@ loop {
                     println!("Connection to {peer_id} closed gracefully");
                 }
             }
+            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                println!("Failed to connect to {peer_id:?}: {error}");
+            }
             SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                 BehaviourEvent::Ping(ping_event) => {
                     match ping_event {
@@ -113,9 +116,6 @@ loop {
                         }
                     }
                 }
-            }
-            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                println!("Failed to connect to {peer_id:?}: {error}");
             }
             _ => {}
         }

@@ -25,7 +25,7 @@ def validate_peer_id(peer_id_str):
         if char not in valid_chars:
             return False, f"Invalid character '{char}' in peer ID. Must be base58 encoded."
     
-    return True, f"Valid peer ID format: {peer_id_str}"
+    return True, f"{peer_id_str}"
 
 def validate_multiaddr(addr_str):
     """Validate that the address string looks like a valid multiaddr"""
@@ -37,7 +37,7 @@ def validate_multiaddr(addr_str):
     if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
         return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
      
-    return True, f"Valid multiaddr: {addr_str}"
+    return True, f"{addr_str}"
 
 def check_output():
     """Check the output log for expected identify checkpoint functionality"""

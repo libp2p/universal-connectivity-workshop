@@ -25,7 +25,7 @@ def validate_peer_id(peer_id_str):
         if char not in valid_chars:
             return False, f"Invalid character '{char}' in peer ID. Must be base58 encoded."
     
-    return True, f"Valid peer ID format: {peer_id_str}"
+    return True, f"{peer_id_str}"
 
 def validate_multiaddr(addr_str):
     """Validate that the address string looks like a valid multiaddr"""
@@ -37,7 +37,7 @@ def validate_multiaddr(addr_str):
     if not ("/tcp" in addr_str or "/quic-v1" in addr_str):
         return False, f"Missing TCP or QUIC transport in multiaddr: {addr_str}"
       
-    return True, f"Valid multiaddr: {addr_str}"
+    return True, f"{addr_str}"
 
 def check_output():
     """Check the output log for expected TCP transport functionality"""
@@ -151,7 +151,7 @@ def check_output():
 
 def main():
     """Main check function"""
-    print("i Checking Lesson 3: Ping Checkpoint 🏆")
+    print("i Checking Lesson 4: QUIC Transport")
     print("i " + "=" * 50)
     
     try:
@@ -160,13 +160,12 @@ def main():
             return False
         
         print("i " + "=" * 50)
-        print("y Ping checkpoint completed successfully! 🎉")
+        print("y QUIC Transport completed successfully! 🎉")
         print("i You have successfully:")
-        print("i • Configured ping protocol with custom intervals")
+        print("i • Configured QUIC transport")
         print("i • Established bidirectional connectivity")
         print("i • Measured round-trip times between peers")
-        print("i • Reached your first checkpoint!")
-        print("Ready for Lesson 4: QUIC Transport!")
+        print("Ready for Lesson 5: Identify Checkpoint!")
         
         return True
         

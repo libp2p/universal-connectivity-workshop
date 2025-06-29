@@ -9,7 +9,6 @@ import sys
 import os
 import re
 
-#TODO: change this to use py-libp2p for PeerID validation
 def validate_peer_id(peer_id_str):
     """Validate that the peer ID string is a valid libp2p PeerId format"""
     # Basic format validation - should start with 12D3KooW (Ed25519 peer IDs)
@@ -28,7 +27,6 @@ def validate_peer_id(peer_id_str):
     
     return True, f"{peer_id_str}"
 
-#TODO: change this to use py-multiaddr for Multiaddr validation
 def validate_multiaddr(addr_str):
     """Validate that the address string looks like a valid multiaddr"""
     # Basic multiaddr validation - should start with /ip4/ or /ip6/

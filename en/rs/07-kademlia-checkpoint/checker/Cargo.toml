@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.98"
 futures = "0.3.31"
-libp2p = { version = "0.55.0", features = ["ed25519", "gossipsub", "identify", "kad", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
+libp2p = { version = "0.56.0", features = ["ed25519", "gossipsub", "identify", "kad", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
 prost = "0.13"
 prost-types = "0.13"
 tokio = { version = "1.45.1", features = ["full"] }
