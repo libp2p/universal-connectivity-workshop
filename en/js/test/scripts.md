@@ -72,3 +72,4 @@ exit $RESULT
 - Cleans up Docker containers and volumes after the test.
 
 ---
+
