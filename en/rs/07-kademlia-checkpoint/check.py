@@ -39,7 +39,7 @@ def validate_multiaddr(addr_str):
      
     return True, f"Valid multiaddr: {addr_str}"
 
- def check_output():
+def check_output():
     """Check the output log for expected gossipsub checkpoint functionality"""
     if not os.path.exists("checker.log"):
         print("x checker.log file not found")

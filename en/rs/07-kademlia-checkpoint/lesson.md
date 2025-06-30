@@ -503,22 +503,26 @@ async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
     // parse the remote peer addresses from the environment variable
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
+        remote_addrs = remote_peers
+            .split(',')                         // Split the string at ','
+            .map(str::trim)                     // Trim whitespace of each string
+            .filter(|s| !s.is_empty())          // Filter out empty strings
+            .map(Multiaddr::from_str)           // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?;   // Collect into Result and unwrap it
+    }
 
     // parse the bootstrap peer addresses from the environment variable
-    let bootstrap_peers = env::var("BOOTSTRAP_PEERS")?;
-    let bootstrap_addrs: Vec<Multiaddr> = bootstrap_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    let mut bootstrap_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(bootstrap_peers) = env::var("BOOTSTRAP_PEERS") {
+        bootstrap_addrs = bootstrap_peers
+            .split(',')                         // Split the string at ','
+            .map(str::trim)                     // Trim whitespace of each string
+            .filter(|s| !s.is_empty())          // Filter out empty strings
+            .map(Multiaddr::from_str)           // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?;   // Collect into Result and unwrap it
+    }
 
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
@@ -557,14 +561,6 @@ async fn main() -> Result<()> {
     let mut kademlia = kad::Behaviour::with_config(local_peer_id, store, kad_config);
     kademlia.set_mode(Some(kad::Mode::Server));
 
-    // Add the bootstrap peer addresses to the kademlia behaviour
-    for addr in bootstrap_addrs.into_iter() {
-        if let Some((peer_id, peer_addr)) = split_address(addr) {
-            println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
-            kademlia.add_address(&peer_id, peer_addr);
-        }
-    }
-
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
         .with_tcp(
@@ -594,8 +590,18 @@ async fn main() -> Result<()> {
         swarm.dial(addr)?;
     }
 
-    // Start the Kademlia bootstrap process
-    swarm.behaviour_mut().kademlia.bootstrap()?;
+    if !bootstrap_addrs.is_empty() {
+        // Add the bootstrap peer addresses to the kademlia behaviour
+        for addr in bootstrap_addrs.into_iter() {
+            if let Some((peer_id, peer_addr)) = split_address(addr) {
+                println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
+                swarm.behaviour_mut().kademlia.add_address(&peer_id, peer_addr);
+            }
+        }
+
+        // Start the Kademlia bootstrap process
+        swarm.behaviour_mut().kademlia.bootstrap()?;
+    }
 
     loop {
         tokio::select! {
@@ -664,7 +670,7 @@ async fn main() -> Result<()> {
                                     msg.encode(&mut buf)?;
 
                                     if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), buf) {
-                                        println!("Failed to publish message: {:?}", e);
+                                        println!("Failed to publish message: {e:?}");
                                     } else {
                                         println!("Published test message to '{topic}' topic");
                                     }

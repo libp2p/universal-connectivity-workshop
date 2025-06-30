@@ -4,7 +4,7 @@ use libp2p::{
     gossipsub, identify, identity, kad,
     multiaddr::Protocol,
     ping,
-    swarm::{ConnectionId, NetworkBehaviour, SwarmEvent},
+    swarm::{NetworkBehaviour, SwarmEvent},
     Multiaddr, PeerId, StreamProtocol, SwarmBuilder,
 };
 use prost::Message;
@@ -107,22 +107,26 @@ fn split_address(addr: Multiaddr) -> Option<(PeerId, Multiaddr)> {
 #[tokio::main]
 async fn main() -> Result<()> {
     // parse the remote peer addresses from the environment variable
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
+        remote_addrs = remote_peers
+            .split(',') // Split the string at ','
+            .map(str::trim) // Trim whitespace of each string
+            .filter(|s| !s.is_empty()) // Filter out empty strings
+            .map(Multiaddr::from_str) // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    }
 
     // parse the bootstrap peer addresses from the environment variable
-    let bootstrap_peers = env::var("BOOTSTRAP_PEERS")?;
-    let bootstrap_addrs: Vec<Multiaddr> = bootstrap_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    let mut bootstrap_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(bootstrap_peers) = env::var("BOOTSTRAP_PEERS") {
+        bootstrap_addrs = bootstrap_peers
+            .split(',') // Split the string at ','
+            .map(str::trim) // Trim whitespace of each string
+            .filter(|s| !s.is_empty()) // Filter out empty strings
+            .map(Multiaddr::from_str) // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+    }
 
     let local_key = read_identity().await?;
     let local_peer_id = local_key.public().to_peer_id();
@@ -161,14 +165,6 @@ async fn main() -> Result<()> {
     let mut kademlia = kad::Behaviour::with_config(local_peer_id, store, kad_config);
     kademlia.set_mode(Some(kad::Mode::Server));
 
-    // Add the bootstrap peer addresses to the kademlia behaviour
-    for addr in bootstrap_addrs.into_iter() {
-        if let Some((peer_id, peer_addr)) = split_address(addr) {
-            println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
-            kademlia.add_address(&peer_id, peer_addr);
-        }
-    }
-
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
         .with_quic()
@@ -193,13 +189,25 @@ async fn main() -> Result<()> {
         swarm.listen_on(addr)?;
     }
 
-    // Start the Kademlia bootstrap process
-    swarm.behaviour_mut().kademlia.bootstrap()?;
+    if !bootstrap_addrs.is_empty() {
+        // Add the bootstrap peer addresses to the kademlia behaviour
+        for addr in bootstrap_addrs.into_iter() {
+            if let Some((peer_id, peer_addr)) = split_address(addr) {
+                swarm
+                    .behaviour_mut()
+                    .kademlia
+                    .add_address(&peer_id, peer_addr);
+            }
+        }
+
+        // Start the Kademlia bootstrap process
+        swarm.behaviour_mut().kademlia.bootstrap()?;
+    }
 
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("connected,{peer_id},{}", endpoint.get_remote_address());
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
