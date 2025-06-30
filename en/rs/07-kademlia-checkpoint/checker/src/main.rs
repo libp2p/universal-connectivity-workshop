@@ -1,12 +1,22 @@
 use anyhow::Result;
 use futures::StreamExt;
 use libp2p::{
-    gossipsub, identify, identity, kad, ping,
+    gossipsub, identify, identity, kad,
+    multiaddr::Protocol,
+    ping,
     swarm::{ConnectionId, NetworkBehaviour, SwarmEvent},
-    Multiaddr, StreamProtocol, SwarmBuilder,
+    Multiaddr, PeerId, StreamProtocol, SwarmBuilder,
 };
 use prost::Message;
-use std::{env, hash::Hash, path::PathBuf, str::FromStr, time::Duration};
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    fmt::Write,
+    hash::{Hash, Hasher},
+    path::PathBuf,
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 use tokio::fs;
 
 const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
@@ -52,18 +62,67 @@ struct Behaviour {
 async fn read_identity() -> Result<identity::Keypair> {
     let key_path = PathBuf::from("/app/key");
     let bytes = fs::read(&key_path).await?;
-    return Ok(identity::Keypair::from_protobuf_encoding(&bytes)?);
+    Ok(identity::Keypair::from_protobuf_encoding(&bytes)?)
+}
+
+fn message_id(msg: &gossipsub::Message) -> gossipsub::MessageId {
+    let mut s = DefaultHasher::new();
+    msg.data.hash(&mut s);
+    gossipsub::MessageId::from(s.finish().to_string())
+}
+
+fn create_test_message(
+    peer_id: &PeerId,
+) -> Result<(gossipsub::IdentTopic, UniversalConnectivityMessage)> {
+    // Send a test message on the universal-connectivity topic
+    let topic = gossipsub::IdentTopic::new("universal-connectivity");
+    let message = UniversalConnectivityMessage {
+        from: peer_id.to_string(),
+        message: "Hello from {peer_id}!".to_string(),
+        timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64,
+        message_type: MessageType::Chat as i32,
+    };
+    Ok((topic, message))
+}
+
+fn split_address(addr: Multiaddr) -> Option<(PeerId, Multiaddr)> {
+    let mut base_addr = Multiaddr::empty();
+    let mut peer_id = None;
+
+    for protocol in addr.into_iter() {
+        match protocol {
+            Protocol::P2p(id) => {
+                peer_id = Some(id);
+                break;
+            }
+            _ => {
+                base_addr.push(protocol);
+            }
+        }
+    }
+
+    peer_id.map(|id| (id, base_addr))
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // parse the remote peer addresses from the environment variable
     let remote_peers = env::var("REMOTE_PEERS")?;
     let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(Multiaddr::from_str)
-        .collect::<Result<_, _>>()?;
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
+
+    // parse the bootstrap peer addresses from the environment variable
+    let bootstrap_peers = env::var("BOOTSTRAP_PEERS")?;
+    let bootstrap_addrs: Vec<Multiaddr> = bootstrap_peers
+        .split(',') // Split at ','
+        .map(str::trim) // Trim whitespace
+        .filter(|s| !s.is_empty()) // Filter out empty strings
+        .map(Multiaddr::from_str) // Parse each string into Multiaddr
+        .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
 
     let local_key = read_identity().await?;
     let local_peer_id = local_key.public().to_peer_id();
@@ -71,7 +130,11 @@ async fn main() -> Result<()> {
     // Create a Gossipsub configuration
     let gossipsub_config = gossipsub::ConfigBuilder::default()
         .heartbeat_interval(Duration::from_secs(10))
-        .validation_mode(gossipsub::ValidationMode::Strict)
+        .validation_mode(gossipsub::ValidationMode::Permissive)
+        .message_id_fn(message_id)
+        .mesh_outbound_min(1)
+        .mesh_n_low(1)
+        .flood_publish(true)
         .build()?;
 
     // Create a gossipsub instance
@@ -87,11 +150,24 @@ async fn main() -> Result<()> {
         gossipsub.subscribe(&topic)?;
     }
 
+    // Create Kademlia configuration
     let mut kad_config = kad::Config::new(KADEMLIA_PROTOCOL_NAME);
     kad_config.set_query_timeout(Duration::from_secs(KADEMLIA_QUERY_TIMEOUT));
-    kad_config.set_periodic_bootstrap_interval(None);
-    let kad_store = kad::store::MemoryStore::new(local_peer_id.clone());
-    let kademlia = kad::Behaviour::with_config(local_peer_id, kad_store, kad_config);
+    kad_config
+        .set_periodic_bootstrap_interval(Some(Duration::from_secs(KADEMLIA_BOOTSTRAP_INTERVAL)));
+
+    // Create Kademlia behavior with memory store
+    let store = kad::store::MemoryStore::new(local_peer_id);
+    let mut kademlia = kad::Behaviour::with_config(local_peer_id, store, kad_config);
+    kademlia.set_mode(Some(kad::Mode::Server));
+
+    // Add the bootstrap peer addresses to the kademlia behaviour
+    for addr in bootstrap_addrs.into_iter() {
+        if let Some((peer_id, peer_addr)) = split_address(addr) {
+            println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
+            kademlia.add_address(&peer_id, peer_addr);
+        }
+    }
 
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
@@ -117,14 +193,14 @@ async fn main() -> Result<()> {
         swarm.listen_on(addr)?;
     }
 
-    let mut cid: Option<ConnectionId> = None;
+    // Start the Kademlia bootstrap process
+    swarm.behaviour_mut().kademlia.bootstrap()?;
 
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
                 SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
                     println!("connected,{peer_id},{}", endpoint.get_remote_address());
-                    cid = Some(connection_id);
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                     if let Some(error) = cause {
@@ -188,42 +264,46 @@ async fn main() -> Result<()> {
                             kad::Event::OutboundQueryProgressed { result, .. } => {
                                 match result {
                                     kad::QueryResult::Bootstrap(Ok(kad::BootstrapOk {
-                                        peer,
-                                        num_remaining,
+                                        num_remaining, ..
                                     })) => {
-                                        println!("Bootstrap progress: contacted {}, {} remaining", peer, num_remaining);
                                         if num_remaining == 0 {
-                                            println!("Kademlia bootstrap completed successfully");
+                                            println!("bootstrap");
                                         }
                                     }
-                                    kad::QueryResult::Bootstrap(Err(kad::BootstrapError::Timeout)) => {
-                                        println!("Kademlia bootstrap timed out");
+                                    kad::QueryResult::Bootstrap(Err(kad::BootstrapError::Timeout { .. })) => {
+                                        println!("error,bootstrap timed out");
                                     }
-                                    kad::QueryResult::GetClosestPeers(Ok(kad::GetClosestPeersOk { key: _, peers })) => {
-                                        println!("Found {} closest peers", peers.len());
-                                        for peer in peers {
-                                            println!("Closest peer: {}", peer);
+                                    kad::QueryResult::GetClosestPeers(Ok(kad::GetClosestPeersOk { peers, .. })) => {
+                                        let mut out = String::from("closestpeers,");
+                                        for (i, peer) in peers.iter().enumerate() {
+                                            if i > 0 {
+                                                out.push(',');
+                                            }
+                                            write!(&mut out, "{}", peer.peer_id)?;
+                                            for addr in &peer.addrs {
+                                                write!(&mut out, "-{addr}")?;
+                                            }
                                         }
                                     }
-                                    kad::QueryResult::GetClosestPeers(Err(kad::GetClosestPeersError::Timeout { key: _, peers })) => {
-                                        println!("Get closest peers timed out, found {} peers", peers.len());
+                                    kad::QueryResult::GetClosestPeers(Err(kad::GetClosestPeersError::Timeout { .. })) => {
+                                        println!("error,get closest peers timed out");
                                     }
                                     _ => {}
                                 }
                             }
-                            kad::Event::RoutingUpdated { peer, is_new_peer, addresses, bucket_range: _, old_peer } => {
+                            kad::Event::RoutingUpdated { peer, is_new_peer, addresses, old_peer, .. } => {
                                 if is_new_peer {
-                                    println!("New peer added to routing table: {} with {} addresses", peer, addresses.len());
+                                    println!("New peer added to routing table: {peer} with {} addresses", addresses.len());
                                 }
                                 if let Some(old) = old_peer {
-                                    println!("Peer {} replaced {} in routing table", peer, old);
+                                    println!("Peer {peer} replaced {old} in routing table");
                                 }
                             }
                             kad::Event::UnroutablePeer { peer } => {
-                                println!("Peer {} is unroutable", peer);
+                                println!("Peer {peer} is unroutable");
                             }
                             kad::Event::RoutablePeer { peer, address } => {
-                                println!("Peer {} is routable at {}", peer, address);
+                                println!("Peer {peer} is routable at {address}");
                             }
                             _ => {}
                         }
