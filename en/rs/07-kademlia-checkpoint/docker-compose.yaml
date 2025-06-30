@@ -7,28 +7,92 @@ services:
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
       - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1}
-      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.17/tcp/9092}
+      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1/p2p/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB,/ip4/172.16.16.18/udp/9091/quic-v1/p2p/12D3KooWFg4cGhT7UAHJ6D2CzNCkr7MX6eN9vjhK1xSXweHkvd1X,/ip4/172.16.16.19/udp/9091/quic-v1/p2p/12D3KooWJGabNhaBwPCYyRwKFUWLQBrztM13FVNhyt61e7UB8kVy,/ip4/172.16.16.20/udp/9091/quic-v1/p2p/12D3KooWJX6f7aUVfpSvoM752Vwyz9aKkR2WAkoxKtAMBzNrqkD2,/ip4/172.16.16.21/udp/9091/quic-v1/p2p/12D3KooWLPQCGjWhEu37hXbL2H362bApE3UffPMGUn1vqL1AeN92}
     volumes:
       - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
     networks:
       workshop-net:
         ipv4_address: 172.16.16.16
 
-  checker:
+  checker-01:
     image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-07-kademlia-checkpoint
-    container_name: ucw-checker-07-kademlia-checkpoint
+    container_name: ucw-checker-07-kademlia-checkpoint-01
     depends_on:
       - lesson
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
       - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1}
-      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.17/tcp/9092}
     volumes:
       - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB.key:/app/key
     networks:
       workshop-net:
         ipv4_address: 172.16.16.17
+
+  checker-02:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-07-kademlia-checkpoint
+    container_name: ucw-checker-07-kademlia-checkpoint-02
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.18/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWFg4cGhT7UAHJ6D2CzNCkr7MX6eN9vjhK1xSXweHkvd1X.key:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.18
+
+  checker-03:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-07-kademlia-checkpoint
+    container_name: ucw-checker-07-kademlia-checkpoint-03
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.19/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWJGabNhaBwPCYyRwKFUWLQBrztM13FVNhyt61e7UB8kVy.key:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.19
+
+  checker-04:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-07-kademlia-checkpoint
+    container_name: ucw-checker-07-kademlia-checkpoint-04
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.20/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWJX6f7aUVfpSvoM752Vwyz9aKkR2WAkoxKtAMBzNrqkD2.key:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.20
+
+  checker-05:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-07-kademlia-checkpoint
+    container_name: ucw-checker-07-kademlia-checkpoint-05
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.21/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWLPQCGjWhEu37hXbL2H362bApE3UffPMGUn1vqL1AeN92.key:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.21
 
 networks:
   workshop-net:

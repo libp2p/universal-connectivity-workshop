@@ -6,7 +6,7 @@ Welcome to your journey into peer-to-peer networking with rust-libp2p! In this f
 
 By the end of this lesson, you will:
 - Understand what a PeerId is and why it's important
-- Create cryptographic keypairs for peer identification
+- Create a cryptographic keypair for peer identification
 - Initialize a basic libp2p Swarm
 - Run your first libp2p application
 
@@ -43,7 +43,7 @@ Edit your `Cargo.toml` to include the following dependencies:
 [dependencies]
 anyhow = "1.0"
 futures = "0.3"
-libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
+libp2p = { version = "0.56", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
 tokio = { version = "1.45", features = ["full"] }
 ```
 
@@ -61,6 +61,9 @@ Create the basic structure in `src/main.rs` and import the dependencies:
 
 ```rust
 use anyhow::Result;
+use futures::StreamExt;
+use libp2p::{identity, noise, ping, tcp, yamux, SwarmBuilder, swarm::NetworkBehaviour};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,12 +88,12 @@ use libp2p::identity;
 let local_key = identity::Keypair::generate_ed25519();
 let local_peer_id = local_key.public().to_peer_id();
 
-println!("Local peer id: {}", local_peer_id);
+println!("Local peer id: {local_peer_id}");
 ```
 
 ### Step 3: Create a Basic Behaviour
 
-For now, create a network behavior with just the ping behaiour.
+For now, create a network behavior with just the ping behaiour. We'll use the ping behaviour in lesson 3.
 
 ```rust
 use libp2p::{swarm::NetworkBehaviour, ping};
@@ -103,7 +106,7 @@ struct Behaviour {
 
 ### Step 4: Build the Swarm
 
-Create a Swarm with minimal transport configuration:
+The next step is to use the `SwarmBuilder` to build a swarm with the tokio async runtime, TCP transport with Noise encryption and Yamux multiplexing and our basic behaviour. You'll also set a timeout for idle connections.
 
 ```rust
 use libp2p::{noise, tcp, yamux, SwarmBuilder};
@@ -123,11 +126,9 @@ let swarm = SwarmBuilder::with_existing_identity(local_key)
 
 ### Step 5: Run the Event Loop
 
-Add a basic event loop that will run indefinitely:
+After building your swarm you need add a loop that waits for swarm events and then reacts to them. For now, you just need to set up the loop and event handling skeleton.
 
 ```rust
-use futures::StreamExt;
-
 loop {
     tokio::select! {
         Some(event) = swarm.next() => match event {
@@ -135,40 +136,6 @@ loop {
             _ => {}
         }
     }
-}
-```
-
-## Complete Solution Structure
-
-Your complete `src/main.rs` should look something like this structure:
-
-```rust
-// Imports
-use anyhow::Result;
-use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
-use std::time::Duration;
-
-// Step 3: Create a Basic Behaviour
-#[derive(NetworkBehaviour)]
-struct Behaviour {
-    ping: ping::Behaviour,
-}
-
-// Main function
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Step 1: Set Up Your Main Function and Print Startup Message
-
-    // Step 2: Generate identity and Print PeerId
-
-    // Step 4: Build the Swarm
-
-    // Step 5: Run the Event Loop
-
-    Ok(())
 }
 ```
 
@@ -189,7 +156,10 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker compose up --build
+   docker rm -f workshop-lesson ucw-checker-01-identity-and-swarm
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
    ```
 
 4. Run the Python script to check your output:
@@ -211,9 +181,7 @@ Here's the complete working solution:
 ```rust
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
+use libp2p::{identity, noise, ping, tcp, yamux, SwarmBuilder, swarm::NetworkBehaviour};
 use std::time::Duration;
 
 #[derive(NetworkBehaviour)]
@@ -229,7 +197,7 @@ async fn main() -> Result<()> {
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = local_key.public().to_peer_id();
     
-    println!("Local peer id: {}", local_peer_id);
+    println!("Local peer id: {local_peer_id}");
     
     // Build the Swarm, connecting the lower transport logic with the
     // higher-level Network Behaviour logic

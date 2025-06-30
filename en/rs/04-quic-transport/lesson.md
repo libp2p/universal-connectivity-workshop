@@ -26,26 +26,28 @@ Remember back in Lesson 2, you learned that the libp2p stack looks like the foll
 
 ```
 Application protocols (ping, gossipsub, etc.)
-                    ↕
-            Multiplexer (Yamux)
-                    ↕
-            Security (Noise)
-                    ↕
-              Transport (TCP)
-                    ↕
-                Network (IP)
+    ↕
+Multiplexer (Yamux)
+    ↕
+Security (Noise)
+    ↕
+Transport (TCP)
+    ↕
+Network (IP)
 ```
 
 In this lesson you will add the ability to connect to remote peers using the QUIC transport. Because it has integrated encryption and multiplexing, the libp2p stack looks like the following when using QUIC:
 
 ```
 Application protocols (ping, gossipsub, etc.)
-                   ↕
-            Multiplexer ───┐
-            Security     (QUIC)
-            Transport   ───┘
-                   ↕
-               Network (IP)
+    ↕
+──────────────┐
+Multiplexer   │
+Security    (QUIC)
+Transport     │
+──────────────┘
+    ↕
+Network (IP)
 ```
 
 ## Your Task
@@ -65,7 +67,7 @@ Add QUIC support to your Cargo.toml features:
 
 ```toml
 [dependencies]
-libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
+libp2p = { version = "0.56", features = ["ed25519", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
 ```
 
 Note the addition of the "quic" feature.
@@ -96,27 +98,7 @@ let mut swarm = SwarmBuilder::with_existing_identity(local_key)
 
 ### Step 3: Connect Using QUIC
 
-You will use the same dialing code from Lesson 2 and 3, but this time, the `REMOTE_PEERS` environment variable will be initialized with a TCP multiaddr and a QUIC multiaddr, so without any other code changes, your peer will dial the remote peer with both and establish two separate connections, one with TCP, Noise and Yamux, and the other with QUIC. QUIC Multiaddrs look like: `/ip4/172.16.16.17/udp/9091/quic-v1`
-
-```rust
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
-
-    // ...
-
-    // Dial all of the remote peer Multiaddrs
-    for addr in remote_addrs.into_iter() {
-        swarm.dial(addr)?;
-    }
-
-    // ...
-}
-```
+You will use the same dialing code from Lesson 2 and 3, but this time, the `REMOTE_PEERS` environment variable will be initialized with a QUIC multiaddr, so without any other code changes, your peer will dial the remote peer with QUIC. QUIC Multiaddrs look like: `/ip4/172.16.16.17/udp/9091/quic-v1`
 
 ### Step 4: Handle Connection Events
 
@@ -137,7 +119,7 @@ Your existing event handling code will work for both TCP and QUIC connections. T
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f ucw-checker-04-quic-transport
+   docker rm -f workshop-lesson ucw-checker-04-quic-transport
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -159,22 +141,9 @@ Your implementation should:
 
 ## Hints
 
-## Hint - Transport Configuration Order
-
-The order of transport configuration in the SwarmBuilder matters. QUIC should be configured before TCP:
-
-```rust
-.with_tcp(
-    tcp::Config::default(),
-    noise::Config::new,
-    yamux::Config::default,
-)?
-.with_quic()
-```
-
 ## Hint - QUIC Multiaddress Format
 
-QUIC multiaddresses use UDP instead of TCP and include the QUIC version:
+QUIC multiaddresses use UDP instead of TCP and include the QUIC protocol after the port number.
 - TCP: `/ip4/127.0.0.1/tcp/9092`
 - QUIC: `/ip4/127.0.0.1/udp/9092/quic-v1`
 
@@ -185,14 +154,12 @@ Here's the complete working solution:
 ```rust
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
-    ping,
-    swarm::{NetworkBehaviour, SwarmEvent},
+    identity, noise, ping, tcp, yamux,
+    Multiaddr, SwarmBuilder,
+    swarm::{NetworkBehaviour, SwarmEvent}
 };
-use std::env;
-use std::time::Duration;
+use std::{env, str::FromStr, time::Duration};
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
@@ -203,18 +170,24 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+    // parse the remote peer addresses from the environment variable
+    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
+        remote_addrs = remote_peers
+            .split(',')                         // Split the string at ','
+            .map(str::trim)                     // Trim whitespace of each string
+            .filter(|s| !s.is_empty())          // Filter out empty strings
+            .map(Multiaddr::from_str)           // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?;   // Collect into Result and unwrap it
+    }
 
+    // Generate a random Ed25519 keypair for our local peer
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
+
     println!("Local peer id: {local_peer_id}");
 
+    // Build the Swarm
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
         .with_tcp(
@@ -241,7 +214,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {

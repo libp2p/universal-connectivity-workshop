@@ -59,8 +59,8 @@ def check_output():
         # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
         # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
         # identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
-        # subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity,Hello from 12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE!
-        # msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from Universal Connectivity!
+        # subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity
+        # msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from 12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE!
         # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
 
         # check for:

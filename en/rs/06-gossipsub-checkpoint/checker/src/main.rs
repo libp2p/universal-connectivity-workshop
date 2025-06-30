@@ -6,7 +6,13 @@ use libp2p::{
     Multiaddr, SwarmBuilder,
 };
 use prost::Message;
-use std::{env, hash::Hash, str::FromStr, time::Duration};
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    hash::{Hash, Hasher},
+    str::FromStr,
+    time::Duration,
+};
 
 const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
 const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
@@ -44,6 +50,12 @@ struct Behaviour {
     gossipsub: gossipsub::Behaviour,
 }
 
+fn message_id(msg: &gossipsub::Message) -> gossipsub::MessageId {
+    let mut s = DefaultHasher::new();
+    msg.data.hash(&mut s);
+    gossipsub::MessageId::from(s.finish().to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let remote_peers = env::var("REMOTE_PEERS")?;
@@ -59,7 +71,11 @@ async fn main() -> Result<()> {
     // Create a Gossipsub configuration
     let gossipsub_config = gossipsub::ConfigBuilder::default()
         .heartbeat_interval(Duration::from_secs(10))
-        .validation_mode(gossipsub::ValidationMode::Strict)
+        .validation_mode(gossipsub::ValidationMode::Permissive)
+        .message_id_fn(message_id)
+        .mesh_outbound_min(1)
+        .mesh_n_low(1)
+        .flood_publish(true)
         .build()?;
 
     // Create a gossipsub instance

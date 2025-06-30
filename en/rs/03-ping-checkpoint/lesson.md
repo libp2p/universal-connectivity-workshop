@@ -25,19 +25,15 @@ Unlike ICMP ping, libp2p's ping protocol works over any transport and respects t
 Building on your TCP transport implementation from Lesson 2, you need to:
 
 1. **Configure Ping Settings**: Set up ping with a 1-second interval and 5-second timeout
-2. **Dial Remote Peer**: Connect to the peer specified in `REMOTE_PEER` environment variable
-3. **Handle Ping Events**: Process `ping::Event` and display round-trip times
+2. **Handle Ping Events**: Process `ping::Event` and display round-trip times
 
 ## Step-by-Step Instructions
 
 ### Step 1: Update Your NetworkBehaviour
 
-Your existing NetworkBehaviour already includes ping behavior from Lesson 1, but now you need to configure it properly. Your NetworkBehaviour should already look like the following:
+Your existing NetworkBehaviour already includes the `ping` behavior from Lesson 1, but now you need to configure it properly. Your NetworkBehaviour should already look like the following:
 
 ```rust
-use libp2p::ping;
-use std::time::Duration;
-
 #[derive(NetworkBehaviour)]
 struct Behaviour {
     ping: ping::Behaviour,
@@ -46,45 +42,31 @@ struct Behaviour {
 
 ### Step 2: Configure Ping in the Swarm Builder
 
-When creating your behavior, instead of using a `ping::Behaviour::default()`, we want to use the `ping::Behaviour::new()` function and provide it with a `ping::Config` that is configured with the correct 1 second interval and 5 second timeout. The default settings for interval and timeout are 15 seconds and 20 seconds respectively. We are making those values shorter so that when we test this solution we'll send and receive pings immediately after establishing a connection to the remote peer. This is just for convenience. In normal networking situations, the defaults are more appropriate. When programming for mobile or other battery powered devices, you want to make the interval and timeout much longer, such as 30 and 45 seconds so that the radio in the device can spend less time in the high power active state.
+When creating your behavior, instead of using a `ping::Behaviour::default()`, we want to use the `ping::Behaviour::new()` function and provide it with a `ping::Config` that is configured with the correct 1 second interval and 5 second timeout. The default settings for interval and timeout are 15 seconds and 20 seconds respectively. We are making those values shorter so that when we test this solution we'll send and receive pings immediately after establishing a connection to the remote peer. This is just for convenience. In normal networking situations, the defaults are more appropriate. When programming for mobile or other battery powered devices, you should make the interval and timeout much longer, such as 30 and 45 seconds so that the radio in the device can spend less time in the high power active state.
 
 Modify your code that builds the swarm so that the ping behaviour is configured like this:
 
 ```rust
-.with_behaviour(|_| Behaviour {
-    ping: ping::Behaviour::new(
-        ping::Config::new()
-            .with_interval(Duration::from_secs(1))
-            .with_timeout(Duration::from_secs(5))
-    ),
-})?
+// Build the Swarm
+let mut swarm = libp2p::SwarmBuilder::with_existing_identity(local_key)
+    .with_tokio()
+    .with_tcp(
+        tcp::Config::default(),
+        noise::Config::new,
+        yamux::Config::default,
+    )?
+    .with_behaviour(|_| Behaviour {
+        ping: ping::Behaviour::new(
+            ping::Config::new()
+                .with_interval(Duration::from_secs(1))
+                .with_timeout(Duration::from_secs(5))
+        ),
+    })?
+    .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+    .build();
 ```
 
-### Step 3: Dial the Remote Peer
-
-Use the same dialing code from Lesson 2, it should look like this:
-
-```rust
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
-
-    // ...
-
-    // Dial all of the remote peer Multiaddrs
-    for addr in remote_addrs.into_iter() {
-        swarm.dial(addr)?;
-    }
-
-    // ...
-}
-```
-
-### Step 4: Handle Ping Events
+### Step 3: Handle Ping Events
 
 In your event loop, add handling for ping events alongside your existing connection events:
 
@@ -140,7 +122,7 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f ucw-checker-03-ping-checkpoint
+   docker rm -f workshop-lesson ucw-checker-03-ping-checkpoint
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -162,28 +144,6 @@ Your implementation should:
 
 ## Hints
 
-## Hint - Import Statements
-
-Make sure you have all necessary imports:
-```rust
-use libp2p::{
-    ping,
-    swarm::{NetworkBehaviour, SwarmEvent},
-};
-use std::time::Duration;
-```
-
-## Hint - Event Pattern Matching
-
-The ping events are nested within `SwarmEvent::Behaviour`. Make sure your pattern matching handles the `BehaviourEvent` wrapper:
-```rust
-SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
-    BehaviourEvent::Ping(ping_event) => {
-        // Handle ping event here
-    }
-}
-```
-
 ## Hint - Complete Solution
 
 Here's the complete working solution:
@@ -191,14 +151,12 @@ Here's the complete working solution:
 ```rust
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity; 
-use libp2p::{noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
-    ping,
-    swarm::{NetworkBehaviour, SwarmEvent},
+    identity, noise, ping, tcp, yamux,
+    Multiaddr, SwarmBuilder,
+    swarm::{NetworkBehaviour, SwarmEvent}
 };
-use std::env;
-use std::time::Duration;
+use std::{env, str::FromStr, time::Duration};
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
@@ -209,18 +167,24 @@ struct Behaviour {
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+    // parse the remote peer addresses from the environment variable
+    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
+        remote_addrs = remote_peers
+            .split(',')                         // Split the string at ','
+            .map(str::trim)                     // Trim whitespace of each string
+            .filter(|s| !s.is_empty())          // Filter out empty strings
+            .map(Multiaddr::from_str)           // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?;   // Collect into Result and unwrap it
+    }
 
+    // Generate a random Ed25519 keypair for our local peer
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
+
     println!("Local peer id: {local_peer_id}");
 
+    // Build the Swarm
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
         .with_tcp(
@@ -256,6 +220,9 @@ async fn main() -> Result<()> {
                         println!("Connection to {peer_id} closed gracefully");
                     }
                 }
+                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                    println!("Failed to connect to {peer_id:?}: {error}");
+                }
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
                     BehaviourEvent::Ping(ping_event) => {
                         match ping_event {
@@ -267,9 +234,6 @@ async fn main() -> Result<()> {
                             }
                         }
                     }
-                }
-                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                    println!("Failed to connect to {peer_id:?}: {error}");
                 }
                 _ => {}
             }

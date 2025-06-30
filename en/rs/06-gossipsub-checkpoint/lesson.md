@@ -34,11 +34,11 @@ Building on your identify implementation from Lesson 5, you need to:
 
 ### Step 1: Update Dependencies
 
-Add gossipsub and protobuf support to your Cargo.toml:
+Add to your Cargo.toml the `gossipsub` libp2p feature and the `prost` and `prost-types` modules for protobuf support:
 
 ```toml
 [dependencies]
-libp2p = { version = "0.55", features = ["ed25519", "gossipsub", "identify", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
+libp2p = { version = "0.56", features = ["ed25519", "gossipsub", "identify", "macros", "noise", "ping", "quic", "tcp", "tokio", "yamux"] }
 prost = "0.13"
 prost-types = "0.13"
 ```
@@ -48,15 +48,26 @@ prost-types = "0.13"
 Add the necessary imports:
 
 ```rust
-use libp2p::{gossipsub, identify, noise, tcp, yamux, Multiaddr, SwarmBuilder, PeerId};
+use anyhow::Result;
+use futures::StreamExt;
+use libp2p::{
+    gossipsub, identify, identity, noise, ping, tcp, yamux,
+    Multiaddr, PeerId, SwarmBuilder,
+    swarm::{NetworkBehaviour, SwarmEvent}
+};
 use prost::Message;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    hash::{Hash, Hasher},
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 ```
 
 ### Step 3: Define the UniversalConnectivityMessage
 
-Create the protobuf message structure:
+Create the protobuf message structure by adding these to your code:
 
 ```rust
 #[derive(Clone, PartialEq, prost::Message)]
@@ -107,15 +118,31 @@ const GOSSIPSUB_TOPICS: &[&str] = &[
 ];
 ```
 
+One aspect of gossipsub is that it tracks message by their message IDs. The universal connectivity application uses a custom function to generate message IDs based on the message content. This is done to ensure that each message can be uniquely identified and deduplicated in the network. You must add a function above your main function that generates a message ID based on the message content:
+
+```rust
+fn message_id(msg: &gossipsub::Message) -> gossipsub::MessageId {
+    let mut s = DefaultHasher::new();
+    msg.data.hash(&mut s);
+    gossipsub::MessageId::from(s.finish().to_string())
+}
+```
+
 The next step is to create a Gossipsub configuration with the correct heartbeat interval and validation mode. The heartbeat interval determines how often the Gossipsub protocol checks for new messages and propagates them, while the validation mode ensures that messages are properly authenticated and validated before being processed. The strict validation mode requires that each message is signed by the sender using the secret key that is associated with their peer id public key.
 
 ```rust
+
+// ... existing code to generate your identity ...
+
 // Create a Gossipsub configuration
 let gossipsub_config = gossipsub::ConfigBuilder::default()
     .heartbeat_interval(Duration::from_secs(10))
-    .validation_mode(gossipsub::ValidationMode::Strict)
-    .build()
-    .expect("Valid config");
+    .validation_mode(gossipsub::ValidationMode::Permissive)
+    .message_id_fn(message_id)
+    .mesh_outbound_min(1)
+    .mesh_n_low(1)
+    .flood_publish(true)
+    .build()?;
 
 // Create a gossipsub instance
 let mut gossipsub = gossipsub::Behaviour::new(
@@ -129,9 +156,12 @@ for topic_str in GOSSIPSUB_TOPICS {
     gossipsub.subscribe(&topic)?;
     println!("Subscribed to Gossipsub topic: {}", topic_str);
 }
+
+// ... existing code to build the swarm ...
+
 ```
 
-The last step is to add the gossipsub behavior to your NetworkBehaviour:
+The last step is to add the gossipsub behavior to your NetworkBehaviour initialization code:
 
 ```rust
 let mut swarm = SwarmBuilder::with_existing_identity(local_key)
@@ -192,16 +222,16 @@ loop {
                 }
                 BehaviourEvent::Identify(identify_event) => {
                     match identify_event {
-                        identify::Event::Received { peer_id, info } => {
-                            println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
+                        identify::Event::Received { peer_id, info, .. } => {
+                            println!("Identified peer: {peer_id} with protocol version: {}", info.protocol_version);
                             println!("Peer agent: {}", info.agent_version);
                             println!("Peer supports {} protocols", info.protocols.len());
                         }
-                        identify::Event::Sent { peer_id } => {
-                            println!("Sent identify info to: {}", peer_id);
+                        identify::Event::Sent { peer_id, .. } => {
+                            println!("Sent identify info to: {peer_id}");
                         }
-                        identify::Event::Error { peer_id, error } => {
-                            println!("Identify error with {}: {:?}", peer_id, error);
+                        identify::Event::Error { peer_id, error, .. } => {
+                            println!("Identify error with {peer_id}: {error:?}");
                         }
                         _ => {}
                     }
@@ -221,6 +251,20 @@ loop {
                         }
                         gossipsub::Event::Subscribed { peer_id, topic } => {
                             println!("Peer {peer_id} subscribed to '{topic}'");
+
+                            // now that the remote peer is subscribed, publish a message
+                            if topic == gossipsub::IdentTopic::new("universal-connectivity").into() {
+                                let (topic, msg) = create_test_message(&local_peer_id)?;
+
+                                let mut buf = Vec::new();
+                                msg.encode(&mut buf)?;
+
+                                if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), buf) {
+                                    println!("Failed to publish message: {:?}", e);
+                                } else {
+                                    println!("Published test message to '{topic}' topic");
+                                }
+                            }
                         }
                         gossipsub::Event::Unsubscribed { peer_id, topic } => {
                             println!("Peer {peer_id} unsubscribed from '{topic}'");
@@ -237,7 +281,7 @@ loop {
 
 ### Step 7: Send a Message on a Gossipsub Topic
 
-Now that you've subscribed to the Gossipsub topics and set up the event handling, you can send messages on these topics. Let's do that by adding a function that constructs a `UniversalConnectivityMessage` that we can publish. We will then add code to publish this message after we have established a connection to the remote peer.
+Now that you've subscribed to the Gossipsub topics and set up the event handling, you can send messages on these topics. Let's do that by adding a function that constructs a `UniversalConnectivityMessage` that we can publish. We will then add code to publish this message after the remote peer has subscribed to the topic.
 
 First, add a function to create a `UniversalConnectivityMessage`:
 
@@ -257,26 +301,46 @@ fn create_test_message(peer_id: &PeerId) -> Result<(gossipsub::IdentTopic, Unive
 }
 ```
 
-Next, add code to send this message after establishing a connection to the remote peer:
+Next, add code to send this message after the remote peer has subscribed to the topic:
 
 ```rust
 loop {
     tokio::select! {
         Some(event) = swarm.next() => match event {
-            SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
-                println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                let (topic, msg) = create_test_message(local_peer_id);
 
-                let mut buf = Vec::new();
-                msg.encode(&mut buf)?;
+            // ...
 
-                if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, buf) {
-                    println!("Failed to publish message: {:?}", e);
-                } else {
-                    println!("Published test message to 'universal-connectivity' topic");
+            BehaviourEvent::Gossipsub(gossipsub_event) => {
+                match gossipsub_event {
+
+                    // ...
+
+                    gossipsub::Event::Subscribed { peer_id, topic } => {
+                        println!("Peer {peer_id} subscribed to '{topic}'");
+
+                        // now that the remote peer is subscribed, publish a message
+                        if topic == gossipsub::IdentTopic::new("universal-connectivity").into() {
+                            let (topic, msg) = create_test_message(local_peer_id)?;
+
+                            let mut buf = Vec::new();
+                            msg.encode(&mut buf)?;
+
+                            if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), buf) {
+                                println!("Failed to publish message: {e:?}");
+                            } else {
+                                println!("Published test message to '{topic}' topic");
+                            }
+                        }
+                    }
+
+                    // ...
+
+                    _ => {}
                 }
             }
+
             // ...
+
         }
     }
 }
@@ -297,7 +361,7 @@ loop {
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f ucw-checker-06-gossipsub-checkpoint
+   docker rm -f workshop-lesson ucw-checker-06-gossipsub-checkpoint
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -319,29 +383,6 @@ Your implementation should:
 
 ## Hints
 
-## Hint - Message Authentication
-
-Gossipsub requires message authentication. Use the same keypair for both the swarm and gossipsub:
-
-```rust
-let mut gossipsub = gossipsub::Behaviour::new(
-    gossipsub::MessageAuthenticity::Signed(local_key.clone()),
-    gossipsub_config,
-).map_err(|e| anyhow::anyhow!(e))?;
-```
-
-## Hint - Topic Subscription
-
-Subscribe to topics before adding the behavior to the swarm:
-
-```rust
-for topic in GOSSIPSUB_TOPICS {
-    let topic = gossipsub::IdentTopic::new(topic);
-    gossipsub.subscribe(&topic)?;
-    println!("Subscribed to Gossipsub topic: {}", topic);
-}
-```
-
 ## Hint - Complete Solution
 
 Here's the complete working solution:
@@ -349,17 +390,19 @@ Here's the complete working solution:
 ```rust
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{gossipsub, identify, noise, tcp, yamux, Multiaddr, SwarmBuilder};
 use libp2p::{
-    ping,
-    swarm::{NetworkBehaviour, SwarmEvent},
+    gossipsub, identify, identity, noise, ping, tcp, yamux,
+    Multiaddr, PeerId, SwarmBuilder,
+    swarm::{NetworkBehaviour, SwarmEvent}
 };
 use prost::Message;
-use std::env;
-use std::hash::Hash;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{
+    collections::hash_map::DefaultHasher,
+    env,
+    hash::{Hash, Hasher},
+    str::FromStr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
 const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
@@ -396,12 +439,18 @@ struct Behaviour {
     gossipsub: gossipsub::Behaviour,
 }
 
+fn message_id(msg: &gossipsub::Message) -> gossipsub::MessageId {
+    let mut s = DefaultHasher::new();
+    msg.data.hash(&mut s);
+    gossipsub::MessageId::from(s.finish().to_string())
+}
+
 fn create_test_message(peer_id: &PeerId) -> Result<(gossipsub::IdentTopic, UniversalConnectivityMessage)> {
     // Send a test message on the universal-connectivity topic
     let topic = gossipsub::IdentTopic::new("universal-connectivity");
     let message = UniversalConnectivityMessage {
         from: peer_id.to_string(),
-        message: "Hello from {peer_id}!".to_string(),
+        message: format!("Hello from {peer_id}!"),
         timestamp: SystemTime::now()
             .duration_since(UNIX_EPOCH)?
             .as_secs() as i64,
@@ -414,22 +463,31 @@ fn create_test_message(peer_id: &PeerId) -> Result<(gossipsub::IdentTopic, Unive
 async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
-    let remote_peers = env::var("REMOTE_PEERS")?;
-    let remote_addrs: Vec<Multiaddr> = remote_peers
-        .split(',') // Split at ','
-        .map(str::trim) // Trim whitespace
-        .filter(|s| !s.is_empty()) // Filter out empty strings
-        .map(Multiaddr::from_str) // Parse each string into Multiaddr
-        .collect<Result<Multiaddr, _>>()?; // Collect into Result and unwrap it
+    // parse the remote peer addresses from the environment variable
+    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
+        remote_addrs = remote_peers
+            .split(',')                         // Split the string at ','
+            .map(str::trim)                     // Trim whitespace of each string
+            .filter(|s| !s.is_empty())          // Filter out empty strings
+            .map(Multiaddr::from_str)           // Parse each string into Multiaddr
+            .collect::<Result<Vec<_>, _>>()?;   // Collect into Result and unwrap it
+    }
 
+    // Generate a random Ed25519 keypair for our local peer
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = identity::PeerId::from(local_key.public());
+
     println!("Local peer id: {local_peer_id}");
 
     // Create a Gossipsub configuration
     let gossipsub_config = gossipsub::ConfigBuilder::default()
         .heartbeat_interval(Duration::from_secs(10))
-        .validation_mode(gossipsub::ValidationMode::Strict)
+        .validation_mode(gossipsub::ValidationMode::Permissive)
+        .message_id_fn(message_id)
+        .mesh_outbound_min(1)
+        .mesh_n_low(1)
+        .flood_publish(true)
         .build()?;
 
     // Create a gossipsub instance
@@ -439,12 +497,6 @@ async fn main() -> Result<()> {
     ).map_err(|e| anyhow::anyhow!(e))?;
 
     // Subscribe to topics
-    let topics = vec![
-        "universal-connectivity",
-        "universal-connectivity-file",
-        "universal-connectivity-browser-peer-discovery"
-    ];
-
     for topic in GOSSIPSUB_TOPICS {
         let topic = gossipsub::IdentTopic::new(*topic);
         gossipsub.subscribe(&topic)?;
@@ -466,8 +518,8 @@ async fn main() -> Result<()> {
                     .with_timeout(Duration::from_secs(5))
             ),
             identify: identify::Behaviour::new(
-                identify::Config::new("/ipfs/id/1.0.0".to_string(), key.public())
-                    .with_agent_version("universal-connectivity/0.1.0".to_string())
+                identify::Config::new(IDENTIFY_PROTOCOL_VERSION.to_string(), key.public())
+                    .with_agent_version(AGENT_VERSION.to_string())
             ),
             gossipsub,
         })?
@@ -482,18 +534,8 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             Some(event) = swarm.next() => match event {
-                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
+                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
                     println!("Connected to: {peer_id} via {}", endpoint.get_remote_address());
-                    let (topic, msg) = create_test_message(local_peer_id)?;
-
-                    let mut buf = Vec::new();
-                    msg.encode(&mut buf)?;
-
-                    if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), buf) {
-                        println!("Failed to publish message: {:?}", e);
-                    } else {
-                        println!("Published test message to '{topic}' topic");
-                    }
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                     if let Some(err) = cause {
@@ -518,16 +560,16 @@ async fn main() -> Result<()> {
                     }
                     BehaviourEvent::Identify(identify_event) => {
                         match identify_event {
-                            identify::Event::Received { peer_id, info } => {
-                                println!("Identified peer: {} with protocol version: {}", peer_id, info.protocol_version);
+                            identify::Event::Received { peer_id, info, .. } => {
+                                println!("Identified peer: {peer_id} with protocol version: {}", info.protocol_version);
                                 println!("Peer agent: {}", info.agent_version);
                                 println!("Peer supports {} protocols", info.protocols.len());
                             }
-                            identify::Event::Sent { peer_id } => {
-                                println!("Sent identify info to: {}", peer_id);
+                            identify::Event::Sent { peer_id, .. } => {
+                                println!("Sent identify info to: {peer_id}");
                             }
-                            identify::Event::Error { peer_id, error } => {
-                                println!("Identify error with {}: {:?}", peer_id, error);
+                            identify::Event::Error { peer_id, error, .. } => {
+                                println!("Identify error with {peer_id}: {error:?}");
                             }
                             _ => {}
                         }
@@ -542,11 +584,25 @@ async fn main() -> Result<()> {
                                         msg.from,
                                         msg.message_type);
                                 } else {
-                                    println!("Received invalid message on topic '{topic}');
+                                    println!("Received invalid message on topic '{}'", message.topic);
                                 }
                             }
                             gossipsub::Event::Subscribed { peer_id, topic } => {
                                 println!("Peer {peer_id} subscribed to '{topic}'");
+
+                                // now that the remote peer is subscribed, publish a message
+                                if topic == gossipsub::IdentTopic::new("universal-connectivity").into() {
+                                    let (topic, msg) = create_test_message(&local_peer_id)?;
+
+                                    let mut buf = Vec::new();
+                                    msg.encode(&mut buf)?;
+
+                                    if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), buf) {
+                                        println!("Failed to publish message: {e:?}");
+                                    } else {
+                                        println!("Published test message to '{topic}' topic");
+                                    }
+                                }
                             }
                             gossipsub::Event::Unsubscribed { peer_id, topic } => {
                                 println!("Peer {peer_id} unsubscribed from '{topic}'");
