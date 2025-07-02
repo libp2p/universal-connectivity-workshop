@@ -1,0 +1,22 @@
+title: Identity and Basic Host
+description: >
+  In this lesson, we will learn how to create a basic libp2p host and set up 
+  cryptographic identity for our peer. We will explore the concept of PeerId 
+  generation using Ed25519 keypairs and understand the foundations of 
+  peer-to-peer identity in distributed systems.
+status: NotStarted
+objectives:
+  - Understand cryptographic identity in peer-to-peer networks
+  - Generate Ed25519 keypairs for peer identification  
+  - Create PeerId from public key hashing
+  - Implement a basic libp2p Host class
+  - Set up async event loop for network operations
+concepts:
+  - Peer Identity
+  - Cryptographic Keypairs
+  - PeerId Generation
+  - libp2p Host
+  - Async Programming
+difficulty: beginner
+estimated_time: 30
+prerequisites: []
