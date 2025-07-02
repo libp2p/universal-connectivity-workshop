@@ -1,13 +1,14 @@
 # Lesson 2: Transport Layer - TCP Connection
 
-Building on your basic py-libp2p node, in this lesson you'll learn about transport layers and establish your first peer-to-peer connections using TCP with Noise and Yamux multiplexing.
+Building on your basic py-libp2p node, in this lesson you'll learn about transport layers and establish your first peer-to-peer connections using TCP with security and multiplexing.
 
 ## Learning Objectives
 
 By the end of this lesson, you will:
 - Understand py-libp2p's transport abstraction
 - Configure TCP transport with security and multiplexing
-- Establish a connection to a remote peer
+- Set up a TCP listener to accept incoming connections
+- Establish connections to remote peers
 - Handle connection events properly
 
 ## Background: Transport Layers in py-libp2p
@@ -39,184 +40,64 @@ Network (IP)
 
 ## Your Task
 
-Extend your application to:
-1. Parse remote peer addresses from an environment variable
-2. Establish a connection to a remote peer
-3. Print connection events for verification
-4. Handle connection lifecycle properly
+Create an application that:
+1. **Sets up a TCP listener** to accept incoming connections (crucial for checker)
+2. Parse remote peer addresses from environment variables
+3. Establish connections to remote peers if specified
+4. Print connection events for verification
+5. Keep the listener running to maintain connections
 
-## Step-by-Step Instructions
+## Key Implementation Points
 
-### Step 1: Add Required Imports
+### 1. Setting Up the TCP Listener
 
-In your `main.py`, ensure you have the necessary imports. You must import `Multiaddr` for handling addresses and connection event handling capabilities:
+The most important part is creating a listener that accepts incoming connections:
 
 ```python
-import asyncio
+# Set up listening address
+listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")  # Let system choose port
+
+# Create host
+host = new_host()
+
+# Start listening (this creates the TCP listener)
+async with host.run(listen_addrs=[listen_addr]):
+    # Your application logic here
+    pass
+```
+
+### 2. Why the Listener is Critical
+
+The checker needs to **connect TO your application**. Without a listener:
+- ✗ Your app can only dial out to other peers
+- ✗ No incoming connections are accepted
+- ✗ Checker times out trying to connect
+
+With a listener:
+- ✅ Your app accepts incoming connections
+- ✅ Checker can successfully connect
+- ✅ Connection events are properly handled
+
+### 3. Complete Working Implementation
+
+```python
+import trio
 import logging
 import os
 from typing import List
 
 from libp2p import new_host
-from libp2p.network.connection.swarm_connection import SwarmConnection
 from libp2p.peer.peerinfo import info_from_p2p_addr
-from multiaddr import Multiaddr
-
-# Set up logging to see connection events
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-```
-
-### Step 2: Parse Multiaddrs from Environment Variable
-
-In this workshop, one or more `Multiaddr` strings for remote peers is passed in the environment variable `REMOTE_PEERS`. A `Multiaddr` string looks like: `/ip4/172.16.16.17/tcp/9092`.
-
-Add the following code to your `main` function to parse the remote peer addresses:
-
-```python
-async def main():
-    print("Starting Universal Connectivity application...")
-    
-    # Parse remote peer addresses from environment variable
-    remote_addrs: List[Multiaddr] = []
-    remote_peers_env = os.getenv("REMOTE_PEERS", "")
-    
-    if remote_peers_env:
-        remote_addrs = [
-            Multiaddr(addr.strip()) 
-            for addr in remote_peers_env.split(',') 
-            if addr.strip()
-        ]
-    
-    # ... rest of the code will go here ...
-```
-
-### Step 3: Create the Host and Set Up Connection Handling
-
-Create your py-libp2p host and set up connection event handlers:
-
-```python
-async def main():
-    print("Starting Universal Connectivity application...")
-    
-    # Parse remote peer addresses from environment variable
-    remote_addrs: List[Multiaddr] = []
-    remote_peers_env = os.getenv("REMOTE_PEERS", "")
-    
-    if remote_peers_env:
-        remote_addrs = [
-            Multiaddr(addr.strip()) 
-            for addr in remote_peers_env.split(',') 
-            if addr.strip()
-        ]
-    
-    # Create the libp2p host
-    host = new_host()
-    
-    print(f"Local peer id: {host.get_id()}")
-    
-    # Set up connection event handlers
-    def connection_handler(connection: SwarmConnection) -> None:
-        """Handle new connections"""
-        peer_id = connection.muxed_conn.peer_id
-        remote_addr = connection.muxed_conn.conn.writer.get_extra_info('peername')
-        print(f"Connected to: {peer_id} via {remote_addr}")
-    
-    def disconnection_handler(peer_id) -> None:
-        """Handle disconnections"""
-        print(f"Connection to {peer_id} closed gracefully")
-    
-    # Register the handlers
-    host.get_network().set_new_connection_handler(connection_handler)
-    # Note: py-libp2p doesn't have a direct disconnection handler, 
-    # we'll handle this in our connection loop
-```
-
-### Step 4: Connect to Remote Peers
-
-Add code to dial the remote peer addresses:
-
-```python
-async def main():
-    print("Starting Universal Connectivity application...")
-    
-    # Parse remote peer addresses from environment variable  
-    remote_addrs: List[Multiaddr] = []
-    remote_peers_env = os.getenv("REMOTE_PEERS", "")
-    
-    if remote_addrs_env:
-        remote_addrs = [
-            Multiaddr(addr.strip()) 
-            for addr in remote_peers_env.split(',') 
-            if addr.strip()
-        ]
-    
-    # Create the libp2p host
-    host = new_host()
-    
-    print(f"Local peer id: {host.get_id()}")
-    
-    # Connect to all remote peers
-    for addr in remote_addrs:
-        try:
-            # Extract peer info from multiaddr
-            peer_info = info_from_p2p_addr(addr)
-            
-            # Connect to the peer
-            await host.connect(peer_info)
-            print(f"Successfully connected to peer at {addr}")
-            
-        except Exception as e:
-            print(f"Failed to connect to {addr}: {e}")
-    
-    # Keep the program running to maintain connections
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        print("Shutting down...")
-    finally:
-        await host.close()
-```
-
-### Step 5: Enhanced Connection Management
-
-For better connection lifecycle management, let's improve our implementation:
-
-```python
-import asyncio
-import logging
-import os
-from typing import List, Dict
-
-from libp2p import new_host
-from libp2p.peer.peerinfo import info_from_p2p_addr
-from libp2p.peer.id import ID
 from multiaddr import Multiaddr
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[ID, bool] = {}
-    
-    def on_connection_established(self, peer_id: ID, remote_addr: str):
-        """Handle new connection establishment"""
-        self.active_connections[peer_id] = True
-        print(f"Connected to: {peer_id} via {remote_addr}")
-    
-    def on_connection_closed(self, peer_id: ID):
-        """Handle connection closure"""
-        if peer_id in self.active_connections:
-            del self.active_connections[peer_id]
-        print(f"Connection to {peer_id} closed gracefully")
-
 async def main():
     print("Starting Universal Connectivity application...")
     
-    # Parse remote peer addresses
+    # Parse remote peer addresses from environment variable
     remote_addrs: List[Multiaddr] = []
     remote_peers_env = os.getenv("REMOTE_PEERS", "")
     
@@ -227,189 +108,127 @@ async def main():
             if addr.strip()
         ]
     
-    # Create host and connection manager
+    # Set up listening address - this is crucial for accepting incoming connections
+    listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")  # Let system choose port
+    
+    # Create the libp2p host
     host = new_host()
-    conn_manager = ConnectionManager()
     
     print(f"Local peer id: {host.get_id()}")
     
-    # Connect to remote peers
-    connected_peers = []
-    for addr in remote_addrs:
-        try:
-            peer_info = info_from_p2p_addr(addr)
-            await host.connect(peer_info)
-            conn_manager.on_connection_established(peer_info.peer_id, str(addr))
-            connected_peers.append(peer_info.peer_id)
-            
-        except Exception as e:
-            print(f"Failed to connect to {addr}: {e}")
-    
-    # Monitor connections
-    try:
-        while connected_peers:
-            await asyncio.sleep(1)
-            
-            # Check if connections are still active
-            current_peers = list(host.get_network().connections.keys())
-            disconnected = [p for p in connected_peers if p not in current_peers]
-            
-            for peer_id in disconnected:
-                conn_manager.on_connection_closed(peer_id)
-                connected_peers.remove(peer_id)
+    # Start the host and begin listening for connections
+    async with host.run(listen_addrs=[listen_addr]):
+        # Print our listening addresses so checker can find us
+        addrs = host.get_addrs()
+        for addr in addrs:
+            print(f"Listening on: {addr}")
+        
+        # Connect to all remote peers if any specified
+        connected_peers = []
+        for addr in remote_addrs:
+            try:
+                # Extract peer info from multiaddr
+                peer_info = info_from_p2p_addr(addr)
                 
-    except KeyboardInterrupt:
-        print("Shutting down...")
-    finally:
-        await host.close()
+                # Connect to the peer
+                await host.connect(peer_info)
+                print(f"Connected to: {peer_info.peer_id} via {addr}")
+                connected_peers.append(peer_info.peer_id)
+                
+            except Exception as e:
+                print(f"Failed to connect to {addr}: {e}")
+        
+        # Keep the program running to maintain connections and accept new ones
+        try:
+            print("Waiting for incoming connections...")
+            while True:
+                await trio.sleep(1)
+                
+                # Check connection status for outbound connections
+                if connected_peers:
+                    current_peers = list(host.get_network().connections.keys())
+                    disconnected = [p for p in connected_peers if p not in current_peers]
+                    
+                    for peer_id in disconnected:
+                        print(f"Connection to {peer_id} closed gracefully")
+                        connected_peers.remove(peer_id)
+        
+        except KeyboardInterrupt:
+            print("Shutting down...")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    trio.run(main)
 ```
 
 ## Testing Your Implementation
 
-If you are using the workshop tool, hit the `c` key to check your solution. The checker will validate that your peer successfully connects to a remote peer and handles connection events properly.
+### With Docker Compose
 
-For manual testing:
+```bash
+docker compose --project-name workshop up --build --remove-orphans
+```
 
-1. Set environment variables:
-   ```bash
-   export PROJECT_ROOT=/path/to/workshop
-   export LESSON_PATH=py/02-tcp-transport
-   ```
+### Manual Testing
 
-   For windowa
-   ```cmd
-   $env:LESSON_PATH = "py/02-tcp-transport"
-   $env:PROJECT_ROOT = "."
-   ```
+```bash
+python main.py
+```
 
-2. Run with Docker Compose:
-   ```bash
-   docker rm -f workshop-lesson ucw-checker-02-tcp-transport
-   docker network rm -f workshop-net
-   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
-   docker compose --project-name workshop up --build --remove-orphans
-   ```
+You should see output like:
+```
+Starting Universal Connectivity application...
+Local peer id: 12D3KooW...
+Listening on: /ip4/127.0.0.1/tcp/54321/p2p/12D3KooW...
+Listening on: /ip4/192.168.1.100/tcp/54321/p2p/12D3KooW...
+Waiting for incoming connections...
+```
 
-3. Check your output:
-   ```bash
-   python check.py
-   ```
+### Check Your Solution
+
+```bash
+python check.py
+```
 
 ## Success Criteria
 
 Your implementation should:
 - ✅ Display the startup message and local peer ID
-- ✅ Successfully parse remote peer addresses from the environment variable
-- ✅ Successfully connect to the remote peer
-- ✅ Print connection establishment messages
-- ✅ Handle connection closure gracefully
+- ✅ Set up TCP listener on available port
+- ✅ Print listening addresses
+- ✅ Accept incoming connections (what the checker tests)
+- ✅ Parse and connect to remote peers if specified
+- ✅ Handle connection lifecycle properly
+- ✅ Keep running to maintain connections
 
-## Hints
+## Common Issues and Solutions
 
-### Hint - Common Issues
+### "No incoming connection listener setup detected"
+**Problem**: Your app isn't listening for incoming connections
+**Solution**: Use `host.run(listen_addrs=[listen_addr])` to start the TCP listener
 
-**Problem**: "ModuleNotFoundError: No module named 'libp2p'"
-**Solution**: Make sure py-libp2p is installed: `pip install libp2p`
+### "Connection refused" 
+**Problem**: The listener isn't properly configured
+**Solution**: Ensure you're using `0.0.0.0` to listen on all interfaces
 
-**Problem**: Connection fails with "Connection refused"
-**Solution**: Ensure the remote peer is running and the address is correct.
+### "Program exits immediately"
+**Problem**: No event loop to keep the program running
+**Solution**: Add the `while True: await trio.sleep(1)` loop
 
-**Problem**: Program exits immediately
-**Solution**: Add the event loop to keep the program running after connections.
+### TypeError about listen_addrs
+**Problem**: Passing `listen_addrs` to `new_host()` instead of `host.run()`
+**Solution**: Pass `listen_addrs` only to the `host.run()` method
 
-### Hint - Complete Solution
+## Key Concepts Learned
 
-Here's the complete working solution:
-
-```python
-import asyncio
-import logging
-import os
-from typing import List
-
-from libp2p import new_host
-from libp2p.peer.peerinfo import info_from_p2p_addr
-from multiaddr import Multiaddr
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-async def main():
-    print("Starting Universal Connectivity application...")
-    
-    # Parse remote peer addresses from environment variable
-    remote_addrs: List[Multiaddr] = []
-    remote_peers_env = os.getenv("REMOTE_PEERS", "")
-    
-    if remote_peers_env:
-        remote_addrs = [
-            Multiaddr(addr.strip()) 
-            for addr in remote_peers_env.split(',') 
-            if addr.strip()
-        ]
-    
-    # Create the libp2p host
-    host = new_host()
-    
-    print(f"Local peer id: {host.get_id()}")
-    
-    # Connect to all remote peers
-    connected_peers = []
-    for addr in remote_addrs:
-        try:
-            # Extract peer info from multiaddr
-            peer_info = info_from_p2p_addr(addr)
-            
-            # Connect to the peer
-            await host.connect(peer_info)
-            print(f"Connected to: {peer_info.peer_id} via {addr}")
-            connected_peers.append(peer_info.peer_id)
-            
-        except Exception as e:
-            print(f"Failed to connect to {addr}: {e}")
-    
-    # Monitor connections and handle closures
-    try:
-        while connected_peers:
-            await asyncio.sleep(1)
-            
-            # Check connection status
-            current_peers = list(host.get_network().connections.keys())
-            disconnected = [p for p in connected_peers if p not in current_peers]
-            
-            for peer_id in disconnected:
-                print(f"Connection to {peer_id} closed gracefully")
-                connected_peers.remove(peer_id)
-                
-    except KeyboardInterrupt:
-        print("Shutting down...")
-    finally:
-        await host.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+- **TCP Transport**: How py-libp2p handles network communication
+- **Listeners vs Dialers**: Accepting incoming vs making outgoing connections
+- **Multiaddresses**: libp2p's standardized addressing format
+- **Async Context Managers**: Using `async with` for resource management
+- **Connection Lifecycle**: Establishment, maintenance, and cleanup
+- **Event-Driven Programming**: Responding to network events
 
 ## What's Next?
 
-Excellent! You've successfully configured TCP transport and established peer-to-peer connections using py-libp2p. You now understand:
+Excellent! You've successfully configured TCP transport and can both accept incoming connections and establish outgoing connections. You now understand the fundamental networking layer of libp2p.
 
-- **Transport Layer**: How py-libp2p handles network communication
-- **Security**: Noise protocol for encrypted connections  
-- **Connection Management**: Establishing and monitoring connections
-- **Event-Driven Programming**: Responding to network events
-- **Async Programming**: Managing asynchronous operations in Python
-
-In the next lesson, you'll add your first protocol (ping) and connect to the instructor's server for your first checkpoint!
-
-Key concepts you've learned:
-- **py-libp2p Host Creation**: Setting up the networking stack
-- **Connection Events**: Establishment and closure handling
-- **Multiaddresses**: libp2p's addressing format
-- **Async Patterns**: Python async/await for network operations
-
-Next up: Adding the ping protocol and achieving your first checkpoint!
+In the next lesson, you'll add your first application protocol (ping) and learn about stream handling and protocol negotiation!

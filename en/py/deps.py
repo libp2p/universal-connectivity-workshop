@@ -77,9 +77,7 @@ def install_instructions():
     print("INSTALLATION INSTRUCTIONS")
     print("="*60)
     print("\nTo install the required Python packages, run:")
-    print("pip install asyncio aiohttp multiaddr protobuf cryptography")
-    print("\nFor py-libp2p (if available in the future):")
-    print("pip install py-libp2p")
+    print("pip install trio aiohttp multiaddr protobuf cryptography")
     print("\nAlternatively, install from source:")
     print("git clone https://github.com/libp2p/py-libp2p.git")
     print("cd py-libp2p")
@@ -104,7 +102,7 @@ def main():
     
     # Check core Python packages
     required_packages = [
-        ("asyncio", None),  # Built-in, but check if importable
+        ("trio", None),  # Built-in, but check if importable
         ("aiohttp", "3.8.0"),
         ("multiaddr", None),
         ("protobuf", "3.20.0"),

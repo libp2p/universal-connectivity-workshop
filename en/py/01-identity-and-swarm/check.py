@@ -109,7 +109,7 @@ def check_code_structure():
         
         # Check for required imports
         required_imports = [
-            "asyncio",
+            "trio",
             "ed25519",
             "base58"
         ]

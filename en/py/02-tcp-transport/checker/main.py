@@ -1,4 +1,4 @@
-import asyncio
+import trio
 import os
 import sys
 from typing import List
@@ -44,17 +44,16 @@ async def main():
         try:
             print(f"Trying to listen on {addr}")
             
-            # Create a task for listening to handle potential blocking
-            listen_task = asyncio.create_task(host.get_network().listen(addr))
+            # Use trio.move_on_after for timeout instead of wait_for
+            with trio.move_on_after(10.0) as cancel_scope:
+                await host.get_network().listen(addr)
             
-            # Wait for the listen operation with a timeout
-            await asyncio.wait_for(listen_task, timeout=10.0)
+            if cancel_scope.cancelled_caught:
+                print(f"error,Timeout listening on {addr}")
+                continue
             
             print(f"incoming,{addr},listening")
             
-        except asyncio.TimeoutError:
-            print(f"error,Timeout listening on {addr}")
-            continue
         except Exception as e:
             print(f"error,Listen failed on {addr}: {e}")
             print(f"Exception details: {type(e).__name__}: {str(e)}")
@@ -65,7 +64,7 @@ async def main():
         print("Waiting for connections (30 seconds max)...")
         
         for i in range(300):  # 30 seconds
-            await asyncio.sleep(0.1)
+            await trio.sleep(0.1)
             
             # Try to access connections safely
             try:
@@ -77,7 +76,7 @@ async def main():
                         for peer_id in connections:
                             print(f"connected,{peer_id},basic")
                         # Exit after finding connections
-                        await asyncio.sleep(2)  # Wait a bit more
+                        await trio.sleep(2)  # Wait a bit more
                         break
             except Exception as e:
                 print(f"error,Connection check failed: {e}")
@@ -85,7 +84,7 @@ async def main():
                 
     except Exception as e:
         print(f"error,Main loop error: {e}")
-    
+
     # Cleanup
     try:
         await host.close()
@@ -98,9 +97,9 @@ if __name__ == "__main__":
     if not os.getenv("REMOTE_PEERS"):
         print("Warning: REMOTE_PEERS not set, using default")
         os.environ["REMOTE_PEERS"] = "/ip4/127.0.0.1/tcp/9092"
-    
+
     try:
-        asyncio.run(main())
+        trio.run(main)
     except Exception as e:
         print(f"error,Top level error: {e}")
         sys.exit(1)

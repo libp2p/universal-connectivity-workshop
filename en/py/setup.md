@@ -40,19 +40,12 @@ workshop-env\Scripts\activate
 Install the required Python packages:
 
 ```bash
-pip install asyncio aiohttp multiaddr protobuf cryptography pytest
+pip install trio aiohttp multiaddr protobuf cryptography pytest
 ```
 
 ### Step 4: Install py-libp2p
 
 **Note**: py-libp2p is currently experimental. For this workshop, we'll use a simplified implementation that demonstrates core concepts.
-
-If py-libp2p becomes available via pip:
-```bash
-pip install py-libp2p
-```
-
-For now, we'll build our own minimal libp2p implementation during the workshop.
 
 ### Step 5: Verify Your Setup
 

@@ -45,7 +45,7 @@ Lesson 1: Identity and Basic Host
 Creates a basic libp2p host with cryptographic identity.
 """
 
-import asyncio
+import trio
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
@@ -60,12 +60,12 @@ async def main():
     # Keep the application running
     try:
         while True:
-            await asyncio.sleep(1)
+            await trio.sleep(1)
     except KeyboardInterrupt:
         print("Shutting down...")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    trio.run(main())
 ```
 
 ### Step 2: Generate Cryptographic Identity
@@ -159,7 +159,7 @@ async def main():
     # Keep the application running
     try:
         while host.is_running:
-            await asyncio.sleep(1)
+            await trio.sleep(1)
     except KeyboardInterrupt:
         print("Shutting down...")
         await host.stop()
@@ -176,7 +176,7 @@ Lesson 1: Identity and Basic Host
 Creates a basic libp2p host with cryptographic identity.
 """
 
-import asyncio
+import trio
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
@@ -231,13 +231,13 @@ async def main():
     # Keep the application running
     try:
         while host.is_running:
-            await asyncio.sleep(1)
+            await trio.sleep(1)
     except KeyboardInterrupt:
         print("Shutting down...")
         await host.stop()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    trio.run(main)
 ```
 
 ## Testing Your Solution
@@ -280,7 +280,7 @@ Our simplified version just uses SHA256 + Base58 encoding for readability.
 
 ### ⚡ Async/Await Pattern
 
-Python's asyncio is perfect for network programming because:
+Python's trio is perfect for network programming because:
 - It handles many connections concurrently
 - It's non-blocking (doesn't freeze your program)
 - It integrates well with networking libraries

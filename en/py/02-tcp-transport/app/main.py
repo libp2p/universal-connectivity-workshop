@@ -1,4 +1,4 @@
-import asyncio
+import trio
 import logging
 import os
 from typing import List
@@ -25,43 +25,53 @@ async def main():
             if addr.strip()
         ]
     
+    # Set up listening address - this is crucial for accepting incoming connections
+    listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")  # Let system choose port
+    
     # Create the libp2p host
     host = new_host()
     
     print(f"Local peer id: {host.get_id()}")
     
-    # Connect to all remote peers
-    connected_peers = []
-    for addr in remote_addrs:
-        try:
-            # Extract peer info from multiaddr
-            peer_info = info_from_p2p_addr(addr)
-            
-            # Connect to the peer
-            await host.connect(peer_info)
-            print(f"Connected to: {peer_info.peer_id} via {addr}")
-            connected_peers.append(peer_info.peer_id)
-            
-        except Exception as e:
-            print(f"Failed to connect to {addr}: {e}")
-    
-    # Monitor connections and handle closures
-    try:
-        while connected_peers:
-            await asyncio.sleep(1)
-            
-            # Check connection status
-            current_peers = list(host.get_network().connections.keys())
-            disconnected = [p for p in connected_peers if p not in current_peers]
-            
-            for peer_id in disconnected:
-                print(f"Connection to {peer_id} closed gracefully")
-                connected_peers.remove(peer_id)
+    # Start the host and begin listening for connections
+    async with host.run(listen_addrs=[listen_addr]):
+        # Print our listening addresses so checker can find us
+        addrs = host.get_addrs()
+        for addr in addrs:
+            print(f"Listening on: {addr}")
+        
+        # Connect to all remote peers if any specified
+        connected_peers = []
+        for addr in remote_addrs:
+            try:
+                # Extract peer info from multiaddr
+                peer_info = info_from_p2p_addr(addr)
                 
-    except KeyboardInterrupt:
-        print("Shutting down...")
-    finally:
-        await host.close()
+                # Connect to the peer
+                await host.connect(peer_info)
+                print(f"Connected to: {peer_info.peer_id} via {addr}")
+                connected_peers.append(peer_info.peer_id)
+                
+            except Exception as e:
+                print(f"Failed to connect to {addr}: {e}")
+        
+        # Keep the program running to maintain connections and accept new ones
+        try:
+            print("Waiting for incoming connections...")
+            while True:
+                await trio.sleep(1)
+                
+                # Check connection status for outbound connections
+                if connected_peers:
+                    current_peers = list(host.get_network().connections.keys())
+                    disconnected = [p for p in connected_peers if p not in current_peers]
+                    
+                    for peer_id in disconnected:
+                        print(f"Connection to {peer_id} closed gracefully")
+                        connected_peers.remove(peer_id)
+        
+        except KeyboardInterrupt:
+            print("Shutting down...")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    trio.run(main)
