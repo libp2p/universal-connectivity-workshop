@@ -2,3 +2,4 @@ libp2p>=0.2.0
 multiaddr>=0.0.9
 asyncio-mqtt
 pycryptodome
+trio

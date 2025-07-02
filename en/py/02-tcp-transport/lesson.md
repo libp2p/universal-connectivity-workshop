@@ -1,14 +1,14 @@
 # Lesson 2: Transport Layer - TCP Connection
 
-Building on your basic py-libp2p node, in this lesson you'll learn about transport layers and establish your first peer-to-peer connections using TCP with security and multiplexing.
+Building on your basic py-libp2p node, in this lesson you'll learn about transport layers and establish your first peer-to-peer connections using TCP with Noise and Yamux multiplexing.
 
 ## Learning Objectives
 
 By the end of this lesson, you will:
+
 - Understand py-libp2p's transport abstraction
 - Configure TCP transport with security and multiplexing
-- Set up a TCP listener to accept incoming connections
-- Establish connections to remote peers
+- Establish a connection to a remote peer
 - Handle connection events properly
 
 ## Background: Transport Layers in py-libp2p
@@ -19,8 +19,9 @@ In py-libp2p, **transports** handle the low-level network communication. A trans
 - **Memory**: For testing and local communication
 
 Each transport can be enhanced with:
-- **Security protocols**: Encrypt communication (e.g. Noise, SecIO)
-- **Multiplexers**: Share one connection for multiple streams (Yamux, Mplex)
+
+- **Security protocols**: Encrypt communication (e.g., Noise)
+- **Multiplexers**: Share one connection for multiple streams (e.g., Yamux)
 
 ## Transport Stack
 
@@ -40,45 +41,27 @@ Network (IP)
 
 ## Your Task
 
-Create an application that:
-1. **Sets up a TCP listener** to accept incoming connections (crucial for checker)
-2. Parse remote peer addresses from environment variables
-3. Establish connections to remote peers if specified
+Extend your application to:
+
+1. Parse remote peer addresses from an environment variable
+2. Set up a listener for incoming connections
+3. Establish a connection to a remote peer
 4. Print connection events for verification
-5. Keep the listener running to maintain connections
+5. Handle connection lifecycle properly
 
-## Key Implementation Points
+## Step-by-Step Instructions
 
-### 1. Setting Up the TCP Listener
+### Step 1: Set Up Your Environment
 
-The most important part is creating a listener that accepts incoming connections:
+Ensure you have **py-libp2p** installed:
 
-```python
-# Set up listening address
-listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")  # Let system choose port
-
-# Create host
-host = new_host()
-
-# Start listening (this creates the TCP listener)
-async with host.run(listen_addrs=[listen_addr]):
-    # Your application logic here
-    pass
+```bash
+pip install libp2p
 ```
 
-### 2. Why the Listener is Critical
+### Step 2: Create the Main Application
 
-The checker needs to **connect TO your application**. Without a listener:
-- ✗ Your app can only dial out to other peers
-- ✗ No incoming connections are accepted
-- ✗ Checker times out trying to connect
-
-With a listener:
-- ✅ Your app accepts incoming connections
-- ✅ Checker can successfully connect
-- ✅ Connection events are properly handled
-
-### 3. Complete Working Implementation
+Create a file named `main.py` in app folder with the following code to set up a libp2p host, listen for incoming connections, and connect to remote peers.
 
 ```python
 import trio
@@ -91,7 +74,7 @@ from libp2p.peer.peerinfo import info_from_p2p_addr
 from multiaddr import Multiaddr
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 async def main():
@@ -108,8 +91,9 @@ async def main():
             if addr.strip()
         ]
     
-    # Set up listening address - this is crucial for accepting incoming connections
-    listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")  # Let system choose port
+    # Set up listening address with configurable port
+    listen_port = os.getenv("LISTEN_PORT", "9000")
+    listen_addr = Multiaddr(f"/ip4/0.0.0.0/tcp/{listen_port}")
     
     # Create the libp2p host
     host = new_host()
@@ -118,7 +102,7 @@ async def main():
     
     # Start the host and begin listening for connections
     async with host.run(listen_addrs=[listen_addr]):
-        # Print our listening addresses so checker can find us
+        # Print our listening addresses
         addrs = host.get_addrs()
         for addr in addrs:
             print(f"Listening on: {addr}")
@@ -127,10 +111,16 @@ async def main():
         connected_peers = []
         for addr in remote_addrs:
             try:
+                # Validate that the multiaddress contains /p2p
+                if not addr.get("p2p"):
+                    print(f"Invalid multiaddress {addr}: Missing /p2p/<peer_id>")
+                    continue
+                
                 # Extract peer info from multiaddr
                 peer_info = info_from_p2p_addr(addr)
                 
                 # Connect to the peer
+                print(f"Attempting to connect to {peer_info.peer_id} at {addr}")
                 await host.connect(peer_info)
                 print(f"Connected to: {peer_info.peer_id} via {addr}")
                 connected_peers.append(peer_info.peer_id)
@@ -160,75 +150,125 @@ if __name__ == "__main__":
     trio.run(main)
 ```
 
-## Testing Your Implementation
+### Step 3: Test Your Implementation
 
-### With Docker Compose
+#### Manual Testing
 
-```bash
-docker compose --project-name workshop up --build --remove-orphans
-```
+1. **Run Node 1 (Server)**:
 
-### Manual Testing
+   - In the first terminal, set the listening port and run the program without `REMOTE_PEERS` to act as the server:
 
-```bash
-python main.py
-```
+     ```powershell
+     $env:LISTEN_PORT = "9000"
+     $env:REMOTE_PEERS = $null
+     python app/main.py
+     ```
 
-You should see output like:
-```
-Starting Universal Connectivity application...
-Local peer id: 12D3KooW...
-Listening on: /ip4/127.0.0.1/tcp/54321/p2p/12D3KooW...
-Listening on: /ip4/192.168.1.100/tcp/54321/p2p/12D3KooW...
-Waiting for incoming connections...
-```
+   - Note the peer ID and listening address, e.g., `/ip4/0.0.0.0/tcp/9000/p2p/QmRBWnrT7wP2w8JGe3YprMxjPxMvgXFtT1LLNE5JbGFNn9`.
 
-### Check Your Solution
+2. **Run Node 2 (Client)**:
 
-```bash
-python check.py
-```
+   - In the second terminal, set the listening port to a different value (to avoid conflicts) and set `REMOTE_PEERS` to connect to Node 1:
 
-## Success Criteria
+     ```powershell
+     $env:LISTEN_PORT = "9001"
+     $env:REMOTE_PEERS = "/ip4/127.0.0.1/tcp/9000/p2p/QmRBWnrT7wP2w8JGe3YprMxjPxMvgXFtT1LLNE5JbGFNn9"
+     python app/main.py
+     ```
+
+   - Replace the peer ID with the actual peer ID from Node 1’s output.
+
+3. **Verify Output**:
+
+   - Node 1 should print its peer ID, listening address, and indicate it’s waiting for connections.
+   - Node 2 should print its peer ID, listening address, and confirm a successful connection to Node 1, e.g., `Connected to: QmRBWnrT7wP2w8JGe3YprMxjPxMvgXFtT1LLNE5JbGFNn9 via /ip4/127.0.0.1/tcp/9000/p2p/QmRBWnrT7wP2w8JGe3YprMxjPxMvgXFtT1LLNE5JbGFNn9`.
+
+#### Testing with Docker
+
+To test your solution using Docker, you need to set up a network and run both the student’s application and the checker. The checker (`check.py`) expects specific output in `checker.log`, which is generated by `checker/main.py`.
+
+1. **Create a Docker Network**:
+
+   - Create a bridge network with a specific subnet to match the checker’s expected IP range:
+
+     ```bash
+     docker network rm workshop-net
+     docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+     ```
+
+2. **Run Docker Compose**:
+
+   - Ensure the `REMOTE_PEERS` environment variable in `docker-compose.yaml` includes the correct peer ID of the `lesson` container. You can find this by running the `lesson` service first and noting its peer ID from the output.
+
+   - Run the containers:
+
+     ```bash
+     docker compose --project-name workshop up --build --remove-orphans
+     ```
+
+   - Note: You may need to update the `REMOTE_PEERS` peer ID in `docker-compose.yml` after the `lesson` container starts. Alternatively, use a dynamic peer ID retrieval script (advanced) or run the checker manually after noting the peer ID.
+
+3. **Check the Output**:
+
+   - After running, check the `checker.log` file for output and run:
+
+     ```bash
+     python check.py
+     ```
+
+   - The checker validates that:
+
+     - The application starts and displays the peer ID.
+     - It listens on a valid multiaddress (e.g., `/ip4/0.0.0.0/tcp/9000/p2p/<peer_id>`).
+     - It connects to the remote peer (`/ip4/172.16.16.17/tcp/9092/p2p/<checker_peer_id>`).
+     - It prints connection establishment and closure messages.
+
+### Step 4: Success Criteria
 
 Your implementation should:
+
 - ✅ Display the startup message and local peer ID
-- ✅ Set up TCP listener on available port
-- ✅ Print listening addresses
-- ✅ Accept incoming connections (what the checker tests)
-- ✅ Parse and connect to remote peers if specified
-- ✅ Handle connection lifecycle properly
-- ✅ Keep running to maintain connections
+- ✅ Successfully parse remote peer addresses from the environment variable
+- ✅ Listen on a TCP port (e.g., 9000)
+- ✅ Successfully connect to the remote peer
+- ✅ Print connection establishment messages
+- ✅ Handle connection closure gracefully
 
-## Common Issues and Solutions
+### Step 5: Hints
 
-### "No incoming connection listener setup detected"
-**Problem**: Your app isn't listening for incoming connections
-**Solution**: Use `host.run(listen_addrs=[listen_addr])` to start the TCP listener
+#### Common Issues
 
-### "Connection refused" 
-**Problem**: The listener isn't properly configured
-**Solution**: Ensure you're using `0.0.0.0` to listen on all interfaces
+**Problem**: "ModuleNotFoundError: No module named 'libp2p'" **Solution**: Ensure py-libp2p is installed:
 
-### "Program exits immediately"
-**Problem**: No event loop to keep the program running
-**Solution**: Add the `while True: await trio.sleep(1)` loop
+```bash
+pip install libp2p
+```
 
-### TypeError about listen_addrs
-**Problem**: Passing `listen_addrs` to `new_host()` instead of `host.run()`
-**Solution**: Pass `listen_addrs` only to the `host.run()` method
+**Problem**: Connection fails with "Connection refused" **Solution**: Ensure the remote peer is running, the address is correct (includes `/p2p/<peer_id>`), and the port is open (e.g., check firewall settings).
 
-## Key Concepts Learned
+**Problem**: Port conflict when running multiple nodes **Solution**: Use different `LISTEN_PORT` values for each node (e.g., `9000` for Node 1, `9001` for Node 2).
 
-- **TCP Transport**: How py-libp2p handles network communication
-- **Listeners vs Dialers**: Accepting incoming vs making outgoing connections
-- **Multiaddresses**: libp2p's standardized addressing format
-- **Async Context Managers**: Using `async with` for resource management
-- **Connection Lifecycle**: Establishment, maintenance, and cleanup
-- **Event-Driven Programming**: Responding to network events
+**Problem**: Program exits immediately **Solution**: The code includes an event loop (`while True: await trio.sleep(1)`) to keep the program running.
+
+**Problem**: Checker fails with "No connection established" **Solution**: Ensure the `REMOTE_PEERS` multiaddress includes the correct peer ID and uses `127.0.0.1` for local testing or the correct IP for Docker/network testing.
 
 ## What's Next?
 
-Excellent! You've successfully configured TCP transport and can both accept incoming connections and establish outgoing connections. You now understand the fundamental networking layer of libp2p.
+Excellent! You've successfully configured TCP transport and established peer-to-peer connections using py-libp2p. You now understand:
 
-In the next lesson, you'll add your first application protocol (ping) and learn about stream handling and protocol negotiation!
+- **Transport Layer**: How py-libp2p handles network communication
+- **Security**: Noise protocol for encrypted connections
+- **Multiplexing**: Yamux for stream multiplexing
+- **Connection Management**: Establishing and monitoring connections
+- **Async Programming**: Managing asynchronous operations in Python
+
+In the next lesson, you'll add your first protocol (ping) and connect to the instructor's server for your first checkpoint!
+
+Key concepts you've learned:
+
+- **py-libp2p Host Creation**: Setting up the networking stack
+- **Listening and Connecting**: Managing incoming and outgoing connections
+- **Multiaddresses**: libp2p's addressing format
+- **Connection Events**: Handling establishment and closure
+
+Next up: Adding the ping protocol and achieving your first checkpoint!
