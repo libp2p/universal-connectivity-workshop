@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "en/rs/02-tcp-transport/checker",
+    "en/rs/03-ping-checkpoint/checker",
+    "en/rs/04-quic-transport/checker",
+    "en/rs/05-identify-checkpoint/checker",
+    "en/rs/06-gossipsub-checkpoint/checker",
+    "en/rs/07-kademlia-checkpoint/checker",
+    "en/rs/08-final-checkpoint/checker",
+    "xtask",
+]
+resolver = "2"

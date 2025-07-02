@@ -1,0 +1,3 @@
+title: Final Checkpoint - Complete Universal Connectivity
+description: In this final lesson, you will integrate all the libp2p protocols you've learned to create a complete universal connectivity application. You'll implement ping, identify, gossipsub, kademlia, and chat messaging functionality in a single, cohesive peer-to-peer system. This represents the culmination of your libp2p journey and demonstrates real-world application architecture.
+status: NotStarted

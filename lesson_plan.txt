@@ -1,0 +1,95 @@
+# Universal Connectivity Workshop - Lesson Plan
+
+**Lesson 1: Identity and Basic Swarm**
+- Location: `en/rs/01-identity-and-swarm/`
+- Generate an Ed25519 key pair
+- Create a PeerId from the key pair
+- Set up a basic libp2p Swarm
+- Implement an empty event loop to handle Swarm events
+- Check: look for startup messages in stdout.log
+
+**Lesson 2: TCP Transport and Dialing**
+- Location: `en/rs/02-tcp-transport/`
+- Implement TCP transport with Noise encryption and Yamux multiplexing
+- Parse a Multiaddr from an environment variable
+- Dial a remote peer using the multiaddr
+- Handle connection events and errors and print connection messages
+- Check: look for startup messages and connection messages in stdout.log
+
+**Lesson 3: Ping Checkpoint (🏆 Checkpoint 1)**
+- Location: `en/rs/03-ping-checkpoint/`
+- Implement a NetworkBehaviour with the ping Behaviour
+- Initialize the ping Behaviour with a configuration with an interval of 1 second and a timeout of 5 seconds
+- Dial the remote peer using the multiaddr from the environment variable
+- Handle the ping event and print a message when a ping is received saying "Received a ping from {remote_peer_id}, roud trip time: {round_trip_time} ms" using the Duration in the result
+- Check: look for startup messages and connection messages and ping messages in stdout.log
+
+**Lesson 4: QUIC Transport**
+- Location: `en/rs/04-quic-transport/`
+- Multi-transport configuration (TCP + QUIC)
+- Add QUIC transport to the Swarm
+- Dial the remote peer using a QUIC multiaddr in the REMOTE_PEER environment variable
+- Handle connection events and errors and print out connection messages like in Lesson 2
+- Check: look for startup messages and connection messages and ping messages in stdout.log
+
+**Lesson 5: Identify Checkpoint** (🏆 Checkpoint 2)
+- Location: `en/rs/05-identify-checkpoint/`
+- Add Identify Behaviour to the NetworkBehaviour
+- Configure the Identify Behaviour with the ipfs identify protocol: "/ipfs/id/1.0.0" and the universal connectivity agent string: "universal-connectivity/0.1.0"
+- Dial the remote peer using the multiaddr in the REMOTE_PEER environment variable
+- Handle Identify events and print the remote peer's PeerId and protocol version
+- Check: look for startup messages, connection messages, ping messages and identify messages in stdout.log
+
+**Lesson 6: Gossipsub Checkpoint** (🏆 Checkpoint 3)
+- Location: `en/rs/06-gossipsub-checkpoint/`
+- Add Gossipsub Behaviour to the NetworkBehaviour
+- Configure the Gossipsub Behaviour with the topics "universal-connectivity", "universal-connectivity-file", and "universal-connectivity-browser-peer-discovery"
+- Add in protobuf serialization and define UniversalConnectivityMessage as it is defined in the real universal connectivity app: https://github.com/libp2p/universal-connectivity/blob/a1dd5f5c3b880d6ad754893e424be97ae1607088/rust-peer/src/peer.rs#L929-L1134
+- Implement Gossipsub event handling to print received messages
+- Dial the remote peer using the multiaddr in the REMOTE_PEER environment variable
+- Check: look for startup messages, connection messages, ping messages, identify messages and gossipsub messages in stdout.log
+
+**Lesson 7: Kademlia Checkpoint** (🏆 Checkpoint 4)
+- Location: `en/rs/07-kademlia-checkpoint/`
+- Add the Kademlia Behaviour to the NetworkBehaviour
+- Configure the Kademlia Behaviour with the "/ipfs/kad/1.0.0" protocol, a 60 second query timeout, a 300 second bootstrap interval, and a memory store 
+- Add code to initialize the list of bootstrap nodes with the multiaddrs in the BOOTSTRAP_PEERS environment variable
+- Add code to initiate the Kademlia bootstrap process
+- Implement the Kademlia Bootstrap event handling and print out messages when the bootstrap is complete
+- Implement the Kademlia FindPeer event handling and print out messages when a peer is found
+- Dial the remote peer using the multiaddr in the REMOTE_PEER environment variable
+- Check: look for startup messages, connection messages, ping messages, identify messages, gossipsub messages, and kademlia messages in stdout.log
+
+**Lesson 8: Final Checkpoint** (🏆 Final Checkpoint)
+- Location: `en/rs/08-final-checkpoint/`
+- Dial the remote peer using the multiaddr in the REMOTE_PEER environment variable
+- Add code to handle to send a simple introductory chat message as a universal connectivity chat message to connected peers
+- Print the received chat messages from the remote peers
+- Check: look for startup messages, connection messages, ping messages, identify messages, gossipsub messages, kademlia messages, and chat messages in stdout.log
+
+## Implementation Quality Standards
+
+### Lesson Content
+- Clear learning objectives
+- Step-by-step instructions
+- Progressive hint system (gentle → detailed → complete solution)
+- Real-world context and motivation
+
+### Docker Infrastructure  
+- Multi-stage builds for efficiency
+- Configurable timeouts
+- Proper environment variable handling
+- Clean separation of concerns
+
+### Validation Scripts
+- Proper emoji codes for workshop display
+- Comprehensive error handling
+- Clear success/failure reporting
+- Robust pattern matching
+
+### Checkpoint Design
+- Local checker as default instructor simulation
+- Configurable external instructor connectivity
+- Progressive difficulty and concepts
+- Competition-friendly with clear success criteria
+
