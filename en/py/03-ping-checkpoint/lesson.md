@@ -340,9 +340,11 @@ from libp2p.network.stream.net_stream import INetStream
 from libp2p.peer.peerinfo import info_from_p2p_addr
 from libp2p.security.noise.transport import Transport as NoiseTransport
 from libp2p.stream_muxer.yamux.yamux import Yamux, PROTOCOL_ID as YAMUX_PROTOCOL_ID
-from libp2p.multiaddr import Multiaddr
+import multiaddr as Multiaddr
 from cryptography.hazmat.primitives.asymmetric import x25519
 import time
+import re
+
 
 PING_PROTOCOL_ID = TProtocol("/ipfs/ping/1.0.0")
 PING_LENGTH = 32
@@ -366,6 +368,37 @@ class NoisePublicKey:
     
     def to_bytes(self):
         return self._key.public_bytes_raw()
+
+def parse_duration(duration_str):
+    """Parse duration string like '20s', '5m', '1h' to seconds"""
+    if not duration_str:
+        return 20.0  # default
+    
+    # Remove whitespace
+    duration_str = duration_str.strip()
+    
+    # Try to parse as plain number first
+    try:
+        return float(duration_str)
+    except ValueError:
+        pass
+    
+    # Parse with unit suffix
+    match = re.match(r'^(\d+(?:\.\d+)?)\s*([smh]?)$', duration_str.lower())
+    if not match:
+        raise ValueError(f"Invalid duration format: {duration_str}")
+    
+    value, unit = match.groups()
+    value = float(value)
+    
+    if unit == 's' or unit == '':
+        return value
+    elif unit == 'm':
+        return value * 60
+    elif unit == 'h':
+        return value * 3600
+    else:
+        raise ValueError(f"Unknown time unit: {unit}")
 
 async def handle_ping(stream: INetStream) -> None:
     """Handle incoming ping requests"""
@@ -414,39 +447,57 @@ async def send_ping(stream: INetStream):
         except:
             pass
 
+def create_secure_host():
+    """Create a libp2p host with Noise encryption and Yamux multiplexing"""
+    # Generate RSA keypair for libp2p identity
+    key_pair = generate_new_rsa_identity()
+    
+    # Generate X25519 keypair for Noise protocol
+    x25519_private_key = x25519.X25519PrivateKey.generate()
+    noise_privkey = NoisePrivateKey(x25519_private_key)
+    
+    # Create Noise transport
+    noise_transport = NoiseTransport(key_pair, noise_privkey=noise_privkey)
+    
+    # Configure security and multiplexing
+    sec_opt = {TProtocol("/noise"): noise_transport}
+    muxer_opt = {TProtocol(YAMUX_PROTOCOL_ID): Yamux}
+    
+    return new_host(
+        key_pair=key_pair,
+        sec_opt=sec_opt,
+        muxer_opt=muxer_opt
+    )
+
+
 async def main():
     print("Starting Universal Connectivity Application...")
     
-    # Generate keypairs
-    key_pair = generate_new_rsa_identity()
-    peer_id = key_pair.public_key.peer_id
+    # Use the create_secure_host function instead of duplicating code
+    host = create_secure_host()
+    peer_id = host.get_id()
     print(f"Local peer id: {peer_id}")
-    
-    # Create Noise keypair
-    x25519_private_key = x25519.X25519PrivateKey.generate()
-    noise_privkey = NoisePrivateKey(x25519_private_key)
-    noise_transport = NoiseTransport(key_pair, noise_privkey=noise_privkey)
-    
-    # Create host
-    host = new_host(
-        key_pair=key_pair,
-        sec_opt={TProtocol("/noise"): noise_transport},
-        muxer_opt={TProtocol(YAMUX_PROTOCOL_ID): Yamux}
-    )
     
     # Set ping handler
     host.set_stream_handler(PING_PROTOCOL_ID, handle_ping)
     
     # Start host
-    listen_addr = Multiaddr("/ip4/0.0.0.0/tcp/0")
+    listen_addr = Multiaddr.Multiaddr("/ip4/0.0.0.0/tcp/0")
     
     async with host.run(listen_addrs=[listen_addr]):
+        # Print listening addresses
+        addrs = host.get_addrs()
+        print(f"Listening on:")
+        for addr in addrs:
+            print(f"  {addr}")
+        
         # Connect to remote peers
         remote_peers = os.getenv("REMOTE_PEERS", "")
         
         if remote_peers:
+            print(f"Connecting to remote peers: {remote_peers}")
             remote_addrs = [
-                Multiaddr(addr.strip()) for addr in remote_peers.split(",")
+                Multiaddr.Multiaddr(addr.strip()) for addr in remote_peers.split(",")
                 if addr.strip()
             ]
             
@@ -464,15 +515,19 @@ async def main():
                     except Exception as e:
                         print(f"error,Failed to connect to {addr}: {e}")
                 
-                # Wait for timeout
-                timeout = float(os.getenv("TIMEOUT_DURATION", "20"))
+                # Wait for timeout - now properly parsing duration
+                timeout = parse_duration(os.getenv("TIMEOUT_DURATION", "20"))
+                print(f"Running for {timeout} seconds...")
                 with trio.move_on_after(timeout):
                     await trio.sleep_forever()
         else:
             # Just wait for incoming connections
-            timeout = float(os.getenv("TIMEOUT_DURATION", "20"))
+            timeout = parse_duration(os.getenv("TIMEOUT_DURATION", "20"))
+            print(f"No remote peers configured. Waiting for incoming connections for {timeout} seconds...")
             with trio.move_on_after(timeout):
                 await trio.sleep_forever()
+        
+        print("Application finished.")
 
 if __name__ == "__main__":
     trio.run(main)

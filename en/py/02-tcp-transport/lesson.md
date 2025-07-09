@@ -200,6 +200,13 @@ To test your solution using Docker, you need to set up a network and run both th
 
    - Ensure the `REMOTE_PEERS` environment variable in `docker-compose.yaml` includes the correct peer ID of the `lesson` container. You can find this by running the `lesson` service first and noting its peer ID from the output.
 
+   - Remove any existing containers and network to avoid conflicts:
+
+    ```bash
+    docker rm -f workshop-lesson workshop-checker
+    docker network rm workshop-net
+    ```
+
    - Run the containers:
 
      ```bash
