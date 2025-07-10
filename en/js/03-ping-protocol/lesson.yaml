@@ -1,0 +1,17 @@
+title: Ping Protocol (Checkpoint 1)
+slug: ping-protocol
+language: javascript
+difficulty: beginner
+checkpoint: true
+description: |
+  Implement the ping protocol and connect to a remote peer. Learn to use js-libp2p's ping service and handle remote connections.
+objectives:
+  - Add ping protocol to your libp2p node
+  - Connect to a remote peer using a multiaddr
+  - Exchange ping messages and print latency
+validation:
+  method: output
+  success_regex: 'pinged .+ in \\d+ms'
+  failure_message: 'Output must include a successful ping with latency.'
+  emoji_success: '\u2705' # ✅
+  emoji_failure: '\u274C' # ❌
