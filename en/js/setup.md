@@ -1,15 +1,23 @@
-Before starting this workshop, please set up a new Javascript project using the following commands:
+0. **Prerequisites**
 
-```sh
-cd universal-connectivity-workshop/en/js/{LESSON_PATH}/app
+| Tool                  | Recommended version |
+| ----------------------| ------------------- | 
+| Node                  | ≥ 18 LTS            | 
+| npm                   | ≥ 9                 |
+| TypeScript (optional) | ≥ 5.4               |
+
+
+1. **Install Dependencies**
+First, initialize your project and add the required dependencies:
+
+```bash
 npm init -y
-npm install
+npm install libp2p @libp2p/tcp @libp2p/ping @chainsafe/libp2p-noise @chainsafe/libp2p-yamux @libp2p/ping
 ```
 
-After creating the project folder, run the dependency checker:
+For TypeScript support (optional):
 
-```sh
-python3 ../deps.py
+```bash
+npm install -D typescript @types/node
+npx tsc --init
 ```
-
-If all dependencies are met, you can proceed with the lessons. If not, please install the missing dependencies (Node.js, npm, Docker, Docker Compose) before continuing.
