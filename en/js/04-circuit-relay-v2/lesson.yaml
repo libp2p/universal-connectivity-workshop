@@ -1,0 +1,17 @@
+title: Circuit Relay v2
+slug: circuit-relay-v2
+language: javascript
+difficulty: intermediate
+description: |
+  Learn to use Circuit Relay v2 in js-libp2p to connect a private peer to a public peer via a relay node.
+objectives:
+  - Set up a relay node with circuit-relay-v2
+  - Configure a listener node (behind NAT) to reserve a slot on the relay
+  - Connect a dialer node to the listener via the relay
+  - Print success message on connection
+validation:
+  method: output
+  success_regex: 'DIAL SUCCESS'
+  failure_message: 'Dialer must print DIAL SUCCESS after connecting to the listener via the relay.'
+  emoji_success: '\u2705'
+  emoji_failure: '\u274C' 
