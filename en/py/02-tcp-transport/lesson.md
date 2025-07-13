@@ -150,6 +150,18 @@ if __name__ == "__main__":
     trio.run(main)
 ```
 
+### Script explanation
+
+This Python script is like a friendly greeter setting up a simple peer-to-peer (P2P) network node using the `libp2p` library. It’s designed to start a host, listen for connections, connect to other peers if you tell it to, and keep an eye on those connections, all while logging what’s going on. Think of it as your computer opening a lemonade stand, ready to chat with other stands in the neighborhood and keep the conversation going until you say stop.
+
+The script kicks off with a cheerful “Starting Universal Connectivity application...” message, letting you know it’s ready to roll. It first checks if you’ve provided any remote peers to connect to by looking at the REMOTE_PEERS environment variable (like a list of friends’ addresses). If you’ve given it some addresses (in a special format called multiaddresses), it cleans them up and stores them in a list. For example, these addresses might look like `/ip4/127.0.0.1/tcp/8000/p2p/QmPeer...,` and it makes sure they’re valid by stripping out any extra spaces.
+
+Next, it sets up where your node will listen for incoming connections. It grabs a port number from the LISTEN_PORT environment variable (defaulting to 9000 if you don’t specify one) and creates a multiaddress like `/ip4/0.0.0.0/tcp/9000,` which means “listen on all network interfaces at this port.” Then it creates a libp2p host, which is like your node’s control center, and prints out its unique ID (like a name tag) so you know who you are in the network.
+
+The host starts running and begins listening on the specified address. It shows you all the addresses it’s listening on (there might be a few, depending on your network setup). If you provided any remote peers, it tries to connect to each one. For each address, it checks if it includes a peer ID (the /p2p part), and if not, it skips it with a warning. If the address is good, it extracts the peer’s info, attempts to connect, and if successful, adds the peer’s ID to a list of connected peers and prints a happy “Connected!” message. If something goes wrong (like the peer’s offline), it just prints an error and moves on.
+
+Once all connections are set up, the script enters a loop where it waits for new incoming connections and keeps the app running. Every second, it checks if any of your connected peers have dropped off (like if they closed their lemonade stand). If a peer disconnects, it lets you know and removes them from the list. The app keeps humming along until you hit `Ctrl+C`, at which point it says “Shutting down...” and gracefully exits. The whole thing is like a friendly network hub that stays online, chats with peers, and keeps you posted on who’s around, all while being ready to shut down when you’re done.
+
 ### Step 3: Test Your Implementation
 
 #### Manual Testing
