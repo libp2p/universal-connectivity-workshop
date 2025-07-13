@@ -1,0 +1,10 @@
+[package]
+name = "ucw-checker-03-ping-checkpoint"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.98"
+futures = "0.3.31"
+libp2p = { version = "0.56.0", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
+tokio = { version = "1.45.1", features = ["full"] }

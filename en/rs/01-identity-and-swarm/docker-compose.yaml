@@ -6,5 +6,18 @@ services:
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-10s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/tcp/9092}
     volumes:
       - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.16.0/24

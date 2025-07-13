@@ -1,0 +1,34 @@
+services:
+  lesson:
+    build:
+      context: ${PROJECT_ROOT}
+      dockerfile: ${LESSON_PATH}/app/Dockerfile
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+
+  checker:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-04-quic-transport
+    container_name: ucw-checker-04-quic-transport
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1}
+    volumes:
+      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

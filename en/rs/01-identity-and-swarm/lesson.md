@@ -6,7 +6,7 @@ Welcome to your journey into peer-to-peer networking with rust-libp2p! In this f
 
 By the end of this lesson, you will:
 - Understand what a PeerId is and why it's important
-- Create cryptographic keypairs for peer identification
+- Create a cryptographic keypair for peer identification
 - Initialize a basic libp2p Swarm
 - Run your first libp2p application
 
@@ -43,7 +43,7 @@ Edit your `Cargo.toml` to include the following dependencies:
 [dependencies]
 anyhow = "1.0"
 futures = "0.3"
-libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
+libp2p = { version = "0.56", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
 tokio = { version = "1.45", features = ["full"] }
 ```
 
@@ -61,6 +61,9 @@ Create the basic structure in `src/main.rs` and import the dependencies:
 
 ```rust
 use anyhow::Result;
+use futures::StreamExt;
+use libp2p::{identity, noise, ping, tcp, yamux, SwarmBuilder, swarm::NetworkBehaviour};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,12 +88,12 @@ use libp2p::identity;
 let local_key = identity::Keypair::generate_ed25519();
 let local_peer_id = local_key.public().to_peer_id();
 
-println!("Local peer id: {}", local_peer_id);
+println!("Local peer id: {local_peer_id}");
 ```
 
 ### Step 3: Create a Basic Behaviour
 
-For now, create a network behavior with just the ping behaiour.
+For now, create a network behavior with just the ping behaiour. We'll use the ping behaviour in lesson 3.
 
 ```rust
 use libp2p::{swarm::NetworkBehaviour, ping};
@@ -103,7 +106,7 @@ struct Behaviour {
 
 ### Step 4: Build the Swarm
 
-Create a Swarm with minimal transport configuration:
+The next step is to use the `SwarmBuilder` to build a swarm with the tokio async runtime, TCP transport with Noise encryption and Yamux multiplexing and our basic behaviour. You'll also set a timeout for idle connections.
 
 ```rust
 use libp2p::{noise, tcp, yamux, SwarmBuilder};
@@ -123,11 +126,9 @@ let swarm = SwarmBuilder::with_existing_identity(local_key)
 
 ### Step 5: Run the Event Loop
 
-Add a basic event loop that will run indefinitely:
+After building your swarm you need add a loop that waits for swarm events and then reacts to them. For now, you just need to set up the loop and event handling skeleton.
 
 ```rust
-use futures::StreamExt;
-
 loop {
     tokio::select! {
         Some(event) = swarm.next() => match event {
@@ -138,104 +139,40 @@ loop {
 }
 ```
 
-## Complete Solution Structure
+## Testing Your Implementation
 
-Your complete `src/main.rs` should look something like this structure:
+If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solutionto see if it is correct. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshop/universal-conectivity-workshop/en/rs/01-identity-and-swarm`.
 
-```rust
-// Imports
-use anyhow::Result;
-use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
-use std::time::Duration;
+1. Set the environment variables:
+   ```bash
+   export PROJECT_ROOT=/path/to/workshop
+   export LESSON_PATH=en/rs/03-ping-checkpoint
+   ```
 
-// Step 3: Create a Basic Behaviour
-#[derive(NetworkBehaviour)]
-struct Behaviour {
-    ping: ping::Behaviour,
-}
+2. Change into the lesson directory:
+    ```bash
+    cd $PROJECT_ROOT/$LESSON_PATH
+    ```
 
-// Main function
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Step 1: Set Up Your Main Function and Print Startup Message
+3. Run with Docker Compose:
+   ```bash
+   docker rm -f workshop-lesson ucw-checker-01-identity-and-swarm
+   docker network rm -f workshop-net
+   docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
+   docker compose --project-name workshop up --build --remove-orphans
+   ```
 
-    // Step 2: Generate identity and Print PeerId
+4. Run the Python script to check your output:
+   ```bash
+   python check.py
+   ```
 
-    // Step 4: Build the Swarm
+## Success Criteria
 
-    // Step 5: Run the Event Loop
-
-    Ok(())
-}
-```
-
-## Testing Your Solution
-
-Run your application with:
-```bash
-cargo run
-```
-
-You should see output similar to:
-```
-Starting Universal Connectivity Application...
-Local peer id: 12D3KooWQ6ERu4LGLQFZMkWzdjNcUbxE2UqLQWX5bXBkYU2jcySd
-```
-
-The PeerId will be different each time you run the application since we're generating a new keypair each time.
+Your implementation should:
+- ✅ Display the startup message and local peer ID
 
 ## Hints
-
-## Hint - Missing imports
-If you get compilation errors about missing types, make sure you have all the necessary imports:
-
-```rust
-use anyhow::Result;
-use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
-use std::time::Duration;
-```
-
-## Hint - Swarm builder issues
-If you're having trouble with the SwarmBuilder, remember that you need to:
-1. Start with an existing identity: `SwarmBuilder::with_existing_identity(local_key)`
-2. Choose an executor: `.with_tokio()`
-3. Configure transport: `.with_tcp(...)`
-4. Add behavior: `.with_behaviour(|_| Behaviour { ping: ping::Behaviour::default() })`
-5. Configure swarm: `.with_swarm_config(...)`
-6. Build it: `.build()`
-
-## Hint - Event loop not working
-Make sure your event loop is properly structured:
-
-```rust
-loop {
-    tokio::select! {
-        Some(event) = swarm.next() => match event {
-            // Handle events here in the future
-            _ => {}
-        }
-    }
-}
-```
-
-You need to import `StreamExt` from futures for this to work.
-
-## Hint - Cargo.toml dependencies
-Double-check your dependencies in Cargo.toml:
-
-```toml
-[dependencies]
-anyhow = "1.0"
-futures = "0.3"
-libp2p = { version = "0.55", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux"] }
-tokio = { version = "1.45", features = ["full"] }
-```
 
 ## Hint - Complete Solution
 
@@ -244,9 +181,7 @@ Here's the complete working solution:
 ```rust
 use anyhow::Result;
 use futures::StreamExt;
-use libp2p::identity;
-use libp2p::{noise, tcp, yamux, SwarmBuilder};
-use libp2p::{ping, swarm::NetworkBehaviour};
+use libp2p::{identity, noise, ping, tcp, yamux, SwarmBuilder, swarm::NetworkBehaviour};
 use std::time::Duration;
 
 #[derive(NetworkBehaviour)]
@@ -262,7 +197,7 @@ async fn main() -> Result<()> {
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = local_key.public().to_peer_id();
     
-    println!("Local peer id: {}", local_peer_id);
+    println!("Local peer id: {local_peer_id}");
     
     // Build the Swarm, connecting the lower transport logic with the
     // higher-level Network Behaviour logic
