@@ -1,29 +1,31 @@
 services:
   lesson:
     build:
-      context: ${PROJECT_ROOT}
-      dockerfile: ${LESSON_PATH}/app/Dockerfile
+      context: ./app
+      dockerfile: Dockerfile
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
-      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/tcp/9092}
+      - REMOTE_ADDR=${REMOTE_ADDR:-/ip4/172.16.16.17/tcp/9092}
     volumes:
-      - ${PROJECT_ROOT}/${LESSON_PATH}/stdout.log:/app/stdout.log
+      - ./stdout.log:/app/stdout.log
     networks:
       workshop-net:
         ipv4_address: 172.16.16.16
 
   checker:
-    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-02-tcp-transport
-    container_name: ucw-checker-02-tcp-transport
+    build:
+      context: ./checker
+      dockerfile: Dockerfile
+    container_name: ucw-checker-02-tcp-transport-py
     depends_on:
       - lesson
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
-      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/tcp/9092}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.16/tcp/0}
     volumes:
-      - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ./checker.log:/app/checker.log
     networks:
       workshop-net:
         ipv4_address: 172.16.16.17
@@ -31,4 +33,8 @@ services:
 networks:
   workshop-net:
     name: workshop-net
-    external: true
+    external: false
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.16.0/24 
