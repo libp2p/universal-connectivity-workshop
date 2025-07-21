@@ -1,130 +1,119 @@
-# Lesson 3: Ping Protocol (Checkpoint 1)
+Lesson 3: Ping Checkpoint 🏆
+Welcome to your first checkpoint! In this lesson, you'll implement the ping protocol, one of the fundamental protocols in libp2p that allows peers to measure connectivity and round-trip times.
+Learning Objectives
+By the end of this lesson, you will:
 
-Welcome to your first checkpoint! In this lesson, you'll implement the ping protocol using js-libp2p and connect to a remote peer to exchange ping messages.
+Understand the purpose and mechanics of the ping protocol
+Configure ping behavior with custom intervals and timeouts
+Handle ping events and display connection quality metrics
+Successfully establish bidirectional connectivity with a remote peer
 
-## Objective
-- Add ping protocol to your libp2p node
-- Connect to a remote peer using a multiaddr
-- Exchange ping messages and print latency
+Background: The Ping Protocol
+The ping protocol in libp2p serves several important purposes:
 
----
+Connectivity Testing: Verifies that connections are working bidirectionally
+Latency Measurement: Measures round-trip time between peers
+Keep-Alive: Helps maintain connections by sending periodic traffic
+Network Quality: Provides insights into connection stability
 
-## Step-by-Step Instructions
+Unlike ICMP ping, libp2p's ping protocol works over any transport and respects the encryption and multiplexing layers.
+Your Task
+Building on your TCP transport implementation from Lesson 2, you need to:
 
-1. **Install Dependencies**
-   (If you haven't already, run:)
-   ```sh
-   cd 03-ping-protocol/app
-   npm i @libp2p/ping @libp2p/identify @multiformats/multiaddr @libp2p/tcp @chainsafe/libp2p-noise @chainsafe/libp2p-yamux libp2p @libp2p/interface it-protobuf-stream protons-runtime
-   ```
+Configure Ping Settings: Set up ping with a 1-second interval and 5-second timeout
+Handle Ping Events: Process ping events and display round-trip times
 
-2. **Run Your Node**
-   - Start one instance with no arguments:
+Step-by-Step Instructions
+Step 1: Update Your Ping Service Configuration
+Your existing code already includes the ping service from Lesson 1, but now you need to configure it properly with custom timing settings.
+The default settings for interval and timeout are 15 seconds and 20 seconds respectively. We are making those values shorter so that when we test this solution we'll send and receive pings immediately after establishing a connection to the remote peer. This is just for convenience. In normal networking situations, the defaults are more appropriate. When programming for mobile or other battery powered devices, you should make the interval and timeout much longer, such as 30 and 45 seconds so that the radio in the device can spend less time in the high power active state.
+Step 2: Configure Ping in the Node Creation
+Modify your libp2p node configuration to include the ping service with a 1-second interval and 5-second timeout:
 
-     ```sh
-     cd 02-tcp-transport/app
 
-     node peer1.js 
+```
+import { createLibp2p } from 'libp2p';
+import { tcp } from '@libp2p/tcp';
+import { noise } from '@chainsafe/libp2p-noise';
+import { yamux } from '@chainsafe/libp2p-yamux';
+import { ping } from '@libp2p/ping';
 
-     libp2p has started
-     listening on: /ip4/192.168.0.7/tcp/57375/p2p/  12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak
-     listening on: /ip4/127.0.0.1/tcp/57375/p2p/    12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak
-     listening on: /ip4/172.27.192.1/tcp/57375/p2p/12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak     
-     ```
+const main = async () => {
+  console.log('Starting Universal Connectivity Application...');
+  
+  // Create the libp2p node with configured ping service
+  const node = await createLibp2p({
+    addresses: {
+      listen: ['/ip4/0.0.0.0/tcp/0']
+    },
+    transports: [tcp()],
+    connectionEncrypters: [noise()],
+    streamMuxers: [yamux()],
+    services: {
+      ping: ping({
+        protocolPrefix: 'ipfs',
+        pingInterval: 1000,    // 1 second interval
+        timeout: 5000          // 5 second timeout
+      })
+    },
+    connectionManager: {
+      idleConnectionTimeout: 60000  // 60 seconds idle timeout
+    }
+  });
 
-     - Copy the `/ip4/...` maddr printed.
+  // Start the node
+  await node.start();
 
-   - In a new terminal, run:
-     ```sh
-     cd 03-ping-protocol/app
+  // Print identity and network information
+  console.log('Local peer id:', node.peerId.toString());
+  console.log('Listening on:');
+  node.getMultiaddrs().forEach((addr) => {
+    console.log(' ', addr.toString());
+  });
+  ```
 
-     node peer2.js /ip4/127.0.0.1/tcp/57375/p2p/12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak
+  Step 3: Handle Ping Events
+In your event handling section, add listeners for ping events alongside your existing connection events:
 
-     libp2p has started
-     listening on: /ip4/192.168.0.7/tcp/57379/p2p/12D3KooWGBqHs54L7tYgMBpjYXMmiFhkvAEck81MfJ5rYm7cSL7K
-     listening on: /ip4/127.0.0.1/tcp/57379/p2p/12D3KooWGBqHs54L7tYgMBpjYXMmiFhkvAEck81MfJ5rYm7cSL7K
-     listening on: /ip4/172.27.192.1/tcp/57379/p2p/     12D3KooWGBqHs54L7tYgMBpjYXMmiFhkvAEck81MfJ5rYm7cSL7K
-     ```
-     (Replace with the maddr from the first instance.)
-   - You should see a successful ping and latency printed.
+```
+// Handle connection events
+  node.addEventListener('peer:connect', (evt) => {
+    console.log('Connected to:', evt.detail.toString());
+  });
 
-   ```
-   pinging remote peer at /ip4/127.0.0.1/tcp/57375/p2p/12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak
-   
-   pinged /ip4/127.0.0.1/tcp/57375/p2p/12D3KooWGQZENtJNpBvcRVaYNYD1ZX9UwnZfR1DbNFtFY1q3hvak in 253ms
-   ```
+  node.addEventListener('peer:disconnect', (evt) => {
+    console.log('Disconnected from:', evt.detail.toString());
+  });
 
----
+  // Handle ping events
+  node.services.ping.addEventListener('ping', (evt) => {
+    const { peer, rtt } = evt.detail;
+    console.log(`Received a ping from ${peer.toString()}, round trip time: ${rtt} ms`);
+  });
 
-## Hints
+  node.services.ping.addEventListener('error', (evt) => {
+    const { peer, error } = evt.detail;
+    console.log(`Ping failed to ${peer.toString()}: ${error.message}`);
+  });
 
-<details>
-<summary>Hint 1: How do I use the ping service?</summary>
-Add `ping: ping()` to the `services` property in your libp2p config.
-</details>
+  console.log('Node is running. Press Ctrl+C to stop.');
 
-<details>
-<summary>Hint 2: How do I connect to a remote peer?</summary>
-Use the `@multformats/multiaddr` module to parse the address, then call `node.services.ping.ping(ma)`.
-</details>
+  // Graceful shutdown
+  const cleanup = async () => {
+    console.log('\nShutting down...');
+    await node.stop();
+    process.exit(0);
+  };
 
-<details>
-<summary>Hint 3: Full Solution</summary>
-See the code template above. Make sure to handle errors and print the latency.
-</details>
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
 
----
+  // Keep the process alive
+  process.stdin.resume();
+};
 
-# Direct Message Protocol: Insights and Implementation
-
-## What is the Direct Message Protocol?
-The Direct Message (DM) protocol allows peers to send and receive custom messages (such as chat or commands) over libp2p streams. It uses protobuf for message encoding, supports metadata, and robustly handles connection, stream, and error management. This protocol is a real-world example of how to extend libp2p with your own protocols.
-
-## How is it Implemented?
-- **Protocol Registration:** The DM service registers the `/universal-connectivity/dm/1.0.0` protocol with libp2p, handling connect/disconnect and incoming streams.
-- **Protobuf Usage:** Messages are encoded/decoded using protobuf definitions (mocked in this lesson for simplicity).
-- **Event-Driven:** The service emits a `message` event when a DM is received.
-- **Error Handling:** Handles timeouts, missing data, and protocol errors robustly.
-
-## How to Use in Your Node
-1. **Register the Service:**
-   ```js
-   import { directMessage } from './direct-message.js';
-   // ...
-   services: {
-     // ...
-     directMessage: directMessage(),
-   }
-   ```
-2. **Send a Direct Message:**
-   ```js
-   await node.services.directMessage.send(peerId, 'Hello, world!');
-   ```
-3. **Listen for Incoming DMs:**
-   ```js
-   node.services.directMessage.addEventListener('message', (event) => {
-     const { content, type, connection } = event.detail;
-     console.log(`Received DM: ${content} (type: ${type}) from ${connection.remotePeer.toString()}`);
-   });
-   ```
-
-## Why is this Important?
-- Teaches how to extend libp2p with custom protocols
-- Demonstrates robust event-driven and error-handling patterns
-- Prepares you for building real-world P2P messaging and command systems
-
-## Summary Table
-| Concept                | What to Learn/Do                                      |
-|------------------------|------------------------------------------------------|
-| Protocol Registration  | How to register a custom protocol with libp2p        |
-| Protobuf Usage         | How to encode/decode messages                        |
-| Event Handling         | How to listen for and emit events                    |
-| Error Handling         | How to handle timeouts, missing data, protocol errors|
-| Sending/Receiving DMs  | How to send and receive direct messages              |
-
----
-
-## Resources
-- [js-libp2p Getting Started Guide](https://docs.libp2p.io/guides/getting-started/javascript)
-- [js-libp2p API Docs](https://libp2p.github.io/js-libp2p/)
-- [js-libp2p Ping Service](https://libp2p.github.io/js-libp2p/modules/_libp2p_ping.html)
+main().catch((error) => {
+  console.error('Error:', error);
+  process.exit(1);
+});
+```
