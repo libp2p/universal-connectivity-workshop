@@ -2,10 +2,15 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+# Accept the LESSON_PATH build arg
+ARG LESSON_PATH
+
+# Copy package.json from the correct subdirectory
+COPY ${LESSON_PATH}/app/package*.json ./
 RUN npm install
 
-COPY . .
+# Copy the rest of the app files
+COPY ${LESSON_PATH}/app/ .
 
 FROM node:22-alpine
 

@@ -29,7 +29,7 @@ def validate_peer_id(peer_id_str):
 
 def check_output():
     """Check the output log for expected content"""
-    if not os.path.exists("stdout.log"):
+    if not os.path.exists("./stdout.log"):
         print("x Error: stdout.log file not found")
         return False
     
