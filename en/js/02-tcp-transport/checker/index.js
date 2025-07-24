@@ -1,4 +1,3 @@
-// connect.js
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@chainsafe/libp2p-noise'
@@ -10,6 +9,7 @@ import { createEd25519PeerId } from '@libp2p/peer-id-factory'
 
 async function main () {
   const targets = process.argv.slice(2).map(a => multiaddr(a))
+  
   if (targets.length === 0) {
     console.error('❌  You must pass at least one multiaddr to dial')
     console.error('    Example:')
