@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  app:
+    build: ./app
+    environment:
+      - TIMEOUT_DURATION=10s
+    volumes:
+      - ./app/stdout.log:/app/stdout.log
