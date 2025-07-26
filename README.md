@@ -36,7 +36,7 @@ The `workshop` tool will try to detect Python3, Git, and Docker Compose on your 
 This workshop has been ported to multiple programming languages and translated into multiple spoken languages.
 
 Programming Languages:
- - **Rust**: uses [rust-libp2p](https://github.com/libp2p/rust-libp2p)
+ - **Rust**: Lessons 1 and 2 are confirmed to work, Lessons 3-8 are in progress.
 
 Spoken Languages:
  - **English**
@@ -49,21 +49,27 @@ Throughout this workshop, you'll build a complete [universal connectivity applic
 - **Network Protocols**: TCP, QUIC, and WebRTC transports for different connectivity scenarios
 - **Peer Discovery**: Using Kademlia DHT and identify protocols for automatic peer discovery
 - **Group Communication**: Implementing chat functionality with gossipsub pub/sub messaging
-- **NAT Traversal**: Overcoming network restrictions with relay servers and hole punching
-- **Custom Protocols**: Building request-response protocols for file sharing
-- **Production Readiness**: Creating a complete application with terminal UI and error handling
 
 ## Workshop Structure
 
-The workshop consists of 12 progressive lessons with 5 interactive checkpoints where you'll connect to another peer to demonstrate your progress.
+The workshop consists of 7 progressive lessons with 4 interactive checkpoints where you'll connect to another peer to demonstrate your progress.
+
+### Current Lesson Structure
+
+1. **Identity and Basic Swarm** (Lesson 1): Create a basic swarm and set up peer identity
+2. **TCP Transport** (Lesson 2): Implement TCP transport layer for connectivity
+3. **Ping Checkpoint 🏆** (Lesson 3): Connect to a remote peer and send ping
+4. **QUIC Transport** (Lesson 4): Add QUIC transport for improved connectivity
+5. **Identify Checkpoint 🏆** (Lesson 5): Exchange peer information and capabilities
+6. **Gossipsub Checkpoint 🏆** (Lesson 6): Implement pub/sub messaging for group communication
+7. **Kademlia Checkpoint 🏆** (Lesson 7): Use DHT for distributed peer discovery and content routing
 
 ### Checkpoints Overview
 
 1. **Ping Connection** (Lesson 3): Connect to a remote peer and send ping
 2. **Identify Protocol** (Lesson 5): Extract peer information from a remote peer
-3. **Kademlia Discovery** (Lesson 7): Use DHT to discover the multiaddr of a remote peer
-4. **Chat Connection** (Lesson 8): Join a remote peer's chat room and send messages
-5. **Final Application** (Lesson 12): Complete universal connectivity with all features
+3. **Gossipsub Messaging** (Lesson 6): Join a remote peer's chat room and send messages
+4. **Kademlia Discovery** (Lesson 7): Use DHT to discover the multiaddr of a remote peer
 
 ## Prerequisites
 
@@ -83,12 +89,13 @@ This is an interactive workshop designed for classroom settings although you may
 
 ## Final Application
 
-By the end of this workshop, you'll have built a complete universal connectivity application featuring:
+By the end of this workshop, you'll have built a peer-to-peer networking application featuring:
 
-- Multi-transport connectivity (TCP, QUIC, WebRTC)
-- Automatic peer discovery via DHT
-- Real-time group chat with gossipsub
-- File sharing between peers
-- NAT traversal capabilities
+- Multi-transport connectivity (TCP, QUIC)
+- Peer identity management and swarm networking
+- Bidirectional connectivity with ping protocol
+- Peer information exchange with identify protocol
+- Group communication with gossipsub pub/sub messaging
+- Distributed peer discovery with Kademlia DHT
 
 Get ready to dive deep into the world of peer-to-peer networking with libp2p!

@@ -1,0 +1,11 @@
+[package]
+name = "ucw-checker-08-final-checkpoint"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+futures = "0.3.31"
+libp2p = { version = "0.56.0", features = ["ed25519", "macros", "noise", "ping", "tcp", "tokio", "yamux", "quic", "identify", "gossipsub", "kad"] }
+tokio = { version = "1.45.1", features = ["full"] }
+prost = "0.13.3"

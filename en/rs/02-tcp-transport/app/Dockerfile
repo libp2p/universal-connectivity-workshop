@@ -34,10 +34,10 @@ WORKDIR /app
 COPY --from=builder /app/target/debug/lesson /app/lesson
 
 # Configurable timeout duration
-ARG TIMEOUT_DURATION=10s
+ARG TIMEOUT_DURATION
 ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
 ARG REMOTE_ADDR
 ENV REMOTE_ADDR=${REMOTE_ADDR}
 
 # Set the command to run with timeout and redirect output
-CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} /app/lesson > /app/stdout.log 2>&1"]
+CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} /app/lesson > /app/stdout.log 2>&1"]
