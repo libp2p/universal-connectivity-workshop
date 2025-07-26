@@ -39,7 +39,6 @@ class MessageType(IntEnum):
 
 @dataclass
 class UniversalConnectivityMessage:
-    """Message structure matching the Rust protobuf definition."""
     from_peer: str
     message: str
     timestamp: int
@@ -78,7 +77,7 @@ class P2PChecker:
         key_pair = create_new_key_pair()
         self.host = new_host(key_pair=key_pair)
         
-        # Create GossipSub with configuration similar to Rust version
+        # Create GossipSub with configuration
         self.gossipsub = GossipSub(
             protocols=["/meshsub/1.0.0"],
             degree=6,  # mesh_n
@@ -167,7 +166,7 @@ class P2PChecker:
                     msg_data = UniversalConnectivityMessage.from_json(message.data.decode())
                     print(f"msg,{msg_data.from_peer},{topic},{msg_data.message}")
                     
-                    # Close connection after receiving message (like Rust version)
+                    # Close connection after receiving message
                     if self.connection_id:
                         logger.info("Closing connection after receiving message")
                         # In py-libp2p, we'll just mark for shutdown
@@ -190,8 +189,6 @@ class P2PChecker:
     
     async def handle_connection_events(self):
         """Handle connection events."""
-        # This is a simplified version - py-libp2p doesn't have direct equivalents
-        # to all Rust libp2p events
         while True:
             try:
                 await trio.sleep(5)
@@ -201,7 +198,7 @@ class P2PChecker:
                     connections = self.host.get_network().connections
                     if not connections and self.connection_id:
                         print(f"closed,{self.connection_id}")
-                        return  # Exit like Rust version
+                        return
                         
             except Exception as e:
                 logger.debug(f"Connection event handler error: {e}")
