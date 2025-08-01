@@ -5,6 +5,7 @@ difficulty: intermediate
 checkpoint: true
 description: |
   Implement the identify protocol for peer capability discovery. Connect to a remote peer and extract its PeerId and supported protocols.
+status: NotStarted
 objectives:
   - Implement the identify protocol in your libp2p node
   - Connect to a remote peer and extract its PeerId and supported protocols

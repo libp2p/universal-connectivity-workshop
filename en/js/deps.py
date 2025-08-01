@@ -19,13 +19,9 @@ def check_command(command, version_flag="--version", min_version=None):
 
 def main():
     all_dependencies_met = True
-    if not check_command("node"):  # Node.js
+    if not check_command("node"):
         all_dependencies_met = False
-    if not check_command("npm"):   # npm
-        all_dependencies_met = False
-    if not check_command("docker"):  # Docker
-        all_dependencies_met = False
-    if not check_command("docker-compose", "--version"):  # Docker Compose
+    if not check_command("npm"):
         all_dependencies_met = False
     if all_dependencies_met:
         print("All dependencies are met!")

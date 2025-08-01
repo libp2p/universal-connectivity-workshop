@@ -4,6 +4,7 @@ language: javascript
 difficulty: intermediate
 description: |
   Implement pub/sub messaging for group chat using libp2p's Gossipsub protocol. Learn to join topics, send and receive messages in real-time.
+status: NotStarted
 objectives:
   - Set up libp2p nodes with Gossipsub pub/sub service
   - Join a topic and subscribe to messages

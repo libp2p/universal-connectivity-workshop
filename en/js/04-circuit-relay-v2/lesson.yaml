@@ -4,6 +4,7 @@ language: javascript
 difficulty: intermediate
 description: |
   Learn to use Circuit Relay v2 in js-libp2p to connect a private peer to a public peer via a relay node.
+status: NotStarted
 objectives:
   - Set up a relay node with circuit-relay-v2
   - Configure a listener node (behind NAT) to reserve a slot on the relay
