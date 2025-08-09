@@ -29,25 +29,55 @@ async function main () {
     connectionManager: { idleTimeout: 60_000 }
   })
 
-  // ── 3. Add basic connection‑lifecycle logging ───────────────────────────────
-  node.addEventListener('connection:open', async ev => {
-    const c  = ev.detail
-    const na = c.remoteAddr.nodeAddress()           // { address, port }
-    console.log(`connected,${c.remotePeer.toString()},('${na.address}', ${na.port})`)
-    const peer = c.remotePeer
-      try {
-        const rtt = await node.services.ping.ping(peer)
-        console.log(`🏓  ${peer} RTT = ${rtt} ms`)
-      } catch (err) {
-        console.warn(`⚠️  ping to ${peer} failed:`, err.message)
-      }
-  })
+  // Log incoming connections in the required format
+  node.addEventListener("connection:open", async (ev) => {
+    const c = ev.detail;
+    // Log as: connected,<peer_id>,<multiaddr>
+    console.log(
+      `connected,${c.remotePeer.toString()},${c.remoteAddr.toString()}`
+    );
+    try {
+      const rtt = await node.services.ping.ping(c.remotePeer);
+      // Log as: ping,<peer_id>,<rtt> ms
+      console.log(`ping,${c.remotePeer.toString()},${rtt} ms`);
+      // Close the connection after ping for demonstration
+      await c.close();
+    } catch (err) {
+      console.warn(`x ping to ${c.remotePeer.toString()} failed:`, err.message);
+    }
+  });
 
+  node.addEventListener("connection:close", (ev) => {
+    const c = ev.detail;
+    // Log as: closed,<peer_id>
+    console.log(`closed,${c.remotePeer.toString()}`);
+    // Optionally exit after closing
+    process.exit(0);
+  });
 
+  // Log incoming dials (simulate 'incoming' event)
+  node.addEventListener("connection:incoming", (ev) => {
+    const c = ev.detail;
+    // Log as: incoming,<target_multiaddr>,<from_multiaddr>
+    // Use remoteAddr as the from address, and pick the first listen address as target
+    const listenAddrs = node.getMultiaddrs();
+    const targetAddr =
+      listenAddrs.length > 0 ? listenAddrs[0].toString() : "unknown";
+    console.log(`incoming,${targetAddr},${c.remoteAddr.toString()}`);
+  });
 
+  await node.start();
+  // Dial all targets
+  for (const target of targets) {
+    try {
+      await node.dial(target);
+    } catch (err) {
+      console.error("x Failed to dial", target.toString(), err);
+    }
+  }
 }
 
-main().catch(err => {
-  console.error('Unhandled error:', err)
-  process.exit(1)
-})
+main().catch((err) => {
+  console.error("Unhandled error:", err);
+  process.exit(1);
+});
