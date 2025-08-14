@@ -1,0 +1,41 @@
+version: '3.8'
+
+networks:
+  workshop-net:
+    external: true
+
+services:
+  workshop-lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        TIMEOUT_DURATION: 30s
+        REMOTE_ADDR: /ip4/172.16.16.16/udp/9092/quic-v1
+    container_name: workshop-lesson
+    environment:
+      - REMOTE_PEERS=/ip4/172.16.16.16/udp/9092/quic-v1
+      - BOOTSTRAP_PEERS=/ip4/172.16.16.17/udp/9091/quic-v1/p2p/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+    volumes:
+      - ./app/stdout.log:/app/stdout.log
+    depends_on:
+      - checker
+
+  checker:
+    build:
+      context: ./checker
+      dockerfile: Dockerfile
+      args:
+        TIMEOUT_DURATION: 30s
+        REMOTE_ADDR: /ip4/172.16.16.16/udp/9092/quic-v1
+    container_name: ucw-checker-07-kademlia-checkpoint
+    environment:
+      - REMOTE_PEERS=/ip4/172.16.16.16/udp/9092/quic-v1
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+    volumes:
+      - ./checker.log:/app/checker.log
