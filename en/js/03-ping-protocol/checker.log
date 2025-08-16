@@ -1,8 +1,7 @@
-Connected to: 12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-incoming,/ip4/127.0.0.1/tcp/39649/p2p/12D3KooWQtyYLWX9duS5SMExv5KVf8yUWk2LWFM2RVfH1EdFPk9N,/ip4/127.0.0.1/tcp/49812/p2p/12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-connected,12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG,/ip4/127.0.0.1/tcp/49812/p2p/12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-Connection opened to: 12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG via /ip4/127.0.0.1/tcp/49812/p2p/12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-ping,12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG,28 ms
-Disconnected from: 12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-closed,12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
-Connection closed to: 12D3KooWBLcrt3ay4kPpFwqj1amUNMBWyFgeuEiGFqvLEYSe4WfG
+Connection opened:
+   Remote peer : 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+   Local addr  : /ip4/127.0.0.1/tcp/38527/p2p/12D3KooWMBaGnf5ggeev9Mu1siELsBwrMdTes3hDpNhbbwxCfbjv
+   Remote addr : /ip4/127.0.0.1/tcp/55814/p2p/12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+   • Ping RTT    : 20 ms
+Peer disconnected: 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+Connection closed: 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j

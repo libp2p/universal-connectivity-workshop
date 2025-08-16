@@ -333,4 +333,3 @@ Key concepts you've learned:
 - **Configuration**: Customizing protocol behavior
 - **Bidirectional Communication**: Both sending and receiving messages
 
-In the next lesson, you'll explore QUIC transport as an alternative to TCP, learning about libp2p's multi-transport capabilities.

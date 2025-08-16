@@ -1,11 +1,11 @@
-import { createLibp2p } from 'libp2p'
-import { tcp } from '@libp2p/tcp'
-import { noise } from '@chainsafe/libp2p-noise'
-import { yamux } from '@chainsafe/libp2p-yamux'
-import { ping } from '@libp2p/ping'
-import { identify } from '@libp2p/identify'
-import { multiaddr } from '@multiformats/multiaddr'
-import { createEd25519PeerId } from '@libp2p/peer-id-factory';
+import { createLibp2p } from "libp2p";
+import { tcp } from "@libp2p/tcp";
+import { noise } from "@chainsafe/libp2p-noise";
+import { yamux } from "@chainsafe/libp2p-yamux";
+import { ping } from "@libp2p/ping";
+import { identify } from "@libp2p/identify";
+import { multiaddr } from "@multiformats/multiaddr";
+import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 
 async function main() {
   console.log("Starting Universal Connectivity application...");
@@ -52,45 +52,40 @@ async function main() {
   });
 
   // Set up event handlers
+  // Peer lifecycle events
   node.addEventListener("peer:connect", (evt) => {
-    console.log("Connected to:", evt.detail.toString());
+    console.log(`Peer connected: ${evt.detail.toString()}`);
   });
 
   node.addEventListener("peer:disconnect", (evt) => {
-    console.log("Disconnected from:", evt.detail.toString());
+    console.log(`Peer disconnected: ${evt.detail.toString()}`);
   });
 
   node.addEventListener("connection:open", async (event) => {
     const connection = event.detail;
 
-    const target =
+    const localAddr =
       connection.localAddr?.toString() ??
-      (node.getMultiaddrs()[0]?.toString() || "unknown");
-    const from = connection.remoteAddr.toString();
-    console.log(`incoming,${target},${from}`);
-    console.log(`connected,${connection.remotePeer.toString()},${from}`);
-    console.log(
-      "Connection opened to:",
-      connection.remotePeer.toString(),
-      "via",
-      connection.remoteAddr.toString()
-    );
-    // Try a ping and log the result
+      node.getMultiaddrs()[0]?.toString() ??
+      "unknown";
+    const remoteAddr = connection.remoteAddr.toString();
+
+    console.log("\nConnection opened:");
+    console.log(`   Remote peer : ${connection.remotePeer.toString()}`);
+    console.log(`   Local addr  : ${localAddr}`);
+    console.log(`   Remote addr : ${remoteAddr}`);
+
     try {
       const rtt = await node.services.ping.ping(connection.remotePeer);
-      console.log(`ping,${connection.remotePeer.toString()},${rtt} ms`);
+      console.log(`   • Ping RTT    : ${rtt} ms`);
     } catch (error) {
-      console.warn(
-        `x ping to ${connection.remotePeer.toString()} failed:`,
-        error.message
-      );
+      console.warn(`   • Ping failed : ${error.message}`);
     }
   });
 
   node.addEventListener("connection:close", (event) => {
     const connection = event.detail;
-    console.log(`closed,${connection.remotePeer.toString()}`);
-    console.log("Connection closed to:", connection.remotePeer.toString());
+    console.log(`Connection closed: ${connection.remotePeer.toString()}`);
   });
 
   // Dial all of the remote peer Multiaddrs
