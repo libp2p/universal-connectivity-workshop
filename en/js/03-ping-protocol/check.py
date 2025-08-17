@@ -55,93 +55,83 @@ def check_output():
             print("x checker.log is empty - application may have failed to start")
             return False
 
-        # a correct solution causes the checker to output a sequence of messages like the following:
-        # incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
-        # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
-        # ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
-        # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
+        # Expected sequence in new human-readable format:
+        #   Connection opened:
+        #      Remote peer : <peerId>
+        #      Local addr  : <multiaddr>
+        #      Remote addr : <multiaddr>
+        #      Ping RTT    : <number> ms
+        #   Peer disconnected: <peerId>
+        #   Connection closed: <peerId>
 
-        # check for:
-        #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
-        incoming_pattern = r"incoming,([/\w\.:]+),([/\w\.:]+)"
-        incoming_matches = re.search(incoming_pattern, output)
-        if not incoming_matches:
-            print("x No incoming dial received")
+        # 1. Connection opened section
+        conn_open_pattern = (
+            r"Connection opened:\s*"                                  # header
+            r"(?:.*?\n)?\s*Remote\s+peer\s*:\s*(12D3KooW[\w]+)\s*\n"  # peer id
+            r"\s*Local\s+addr\s*:\s*([^\n]+)\s*\n"                    # local addr
+            r"\s*Remote\s+addr\s*:\s*([^\n]+)"                          # remote addr
+        )
+
+        conn_match = re.search(conn_open_pattern, output, re.MULTILINE)
+        if not conn_match:
+            print("x 'Connection opened' section not found or malformed")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        t = incoming_matches.group(1)
-        valid, t_message = validate_multiaddr(t)
-        if not valid:
-            print(f"x {t_message}")
-            return False
-        
-        f = incoming_matches.group(2)
-        valid, f_message = validate_multiaddr(f)
-        if not valid:
-            print(f"x {f_message}")
-            return False
+        peerid = conn_match.group(1)
+        local_addr = conn_match.group(2).strip()
+        remote_addr = conn_match.group(3).strip()
 
-        print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
-
-        # check for:
-        #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
-        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:]+)"
-        connected_matches = re.search(connected_pattern, output)
-        if not connected_matches:
-            print("x No connection established")
-            print(f"i Actual output: {repr(output)}")
-            return False
-
-        peerid = connected_matches.group(1)
+        # validate peer id and multiaddrs
         valid, peerid_message = validate_peer_id(peerid)
         if not valid:
             print(f"x {peerid_message}")
             return False
-        
-        f = connected_matches.group(2)
-        valid, f_message = validate_multiaddr(f)
-        if not valid:
-            print(f"x {f_message}")
-            return False
 
-        print(f"v Connection established with {peerid_message} at {f_message}")
+        for addr in (local_addr, remote_addr):
+            valid, addr_msg = validate_multiaddr(addr)
+            if not valid:
+                print(f"x {addr_msg}")
+                return False
 
-        # check for:
-        #   ping,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,10 ms
-        ping_pattern = r"ping,(12D3KooW[A-Za-z0-9]+),(\d+\s*ms)"
-        ping_matches = re.search(ping_pattern, output)
-        if not ping_matches:
-            print("x No ping received")
+        print(f"v Connection opened with peer {peerid_message}")
+
+        # 2. Ping RTT line
+        ping_pattern = r"Ping RTT\s*:\s*(\d+\s*ms)"
+        ping_match = re.search(ping_pattern, output)
+        if not ping_match:
+            print("x Ping RTT not reported")
             print(f"i Actual output: {repr(output)}")
             return False
 
-        peerid = ping_matches.group(1)
-        valid, peerid_message = validate_peer_id(peerid)
-        if not valid:
-            print(f"x {peerid_message}")
-            return False
-        
-        ms = ping_matches.group(2)
+        ms = ping_match.group(1)
+        print(f"v Ping round-trip time reported: {ms}")
 
-        print(f"v Ping received from {peerid_message} with RTT {ms}")
+        # 3. Peer disconnected line
+        peer_disc_pattern = r"Peer disconnected:\s*(12D3KooW[\w]+)"
+        disc_match = re.search(peer_disc_pattern, output)
+        if not disc_match:
+            print("x 'Peer disconnected' message not found")
+            return False
 
-        # check for:
-        #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
-        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
-        closed_matches = re.search(closed_pattern, output)
-        if not closed_matches:
-            print("x Connection closure not detected")
-            print(f"i Actual output: {repr(output)}")
+        disc_peerid = disc_match.group(1)
+        if disc_peerid != peerid:
+            print("x Disconnected peer id does not match connected peer id")
             return False
-        
-        peerid = connected_matches.group(1)
-        valid, peerid_message = validate_peer_id(peerid)
-        if not valid:
-            print(f"x {peerid_message}")
+
+        # 4. Connection closed line
+        closed_pattern = r"Connection closed:\s*(12D3KooW[\w]+)"
+        closed_match = re.search(closed_pattern, output)
+        if not closed_match:
+            print("x 'Connection closed' message not found")
             return False
-        
-        print(f"v Connection {peerid_message} closed gracefully")
+
+        closed_peerid = closed_match.group(1)
+        if closed_peerid != peerid:
+            print("x Closed peer id does not match connected peer id")
+            return False
+
+        print(f"v Connection with {peerid_message} closed gracefully")
 
         return True
         
@@ -166,7 +156,7 @@ def main():
         print("i • Established bidirectional connectivity")
         print("i • Measured round-trip times between peers")
         print("i • Reached your first checkpoint!")
-        print("Ready for Lesson 4: QUIC Transport!")
+        print("Ready for Lesson 4: Circuit Relay-V2!")
         
         return True
         
