@@ -451,7 +451,7 @@ The updated implementation includes several important improvements:
 
 4. Check your output:
    ```bash
-   python check.py
+   python run_test.py
    ```
 
 You can also test manually with command line arguments:
