@@ -1,0 +1,16 @@
+checker-listening,/ip4/127.0.0.1/tcp/54912/p2p/16Uiu2HAkx5ELMcG67ygx6Jok7X6qvnJuk3M4RehUn7zXsa3PCVsQ/p2p/16Uiu2HAkx5ELMcG67ygx6Jok7X6qvnJuk3M4RehUn7zXsa3PCVsQ
+Starting Kademlia DHT with peer ID 16Uiu2HAkx5ELMcG67ygx6Jok7X6qvnJuk3M4RehUn7zXsa3PCVsQ
+Refreshing routing table
+No local peers available for network lookup
+checker-dht-started,server
+connected,16Uiu2HAm6eYS512ztJD95mF5wxyEQjZ6M1TwGGqpbqn3X58pWdhq,/ip4/127.0.0.1/tcp/8000/p2p/16Uiu2HAm6eYS512ztJD95mF5wxyEQjZ6M1TwGGqpbqn3X58pWdhq
+connections-established,1
+peer-connected,16Uiu2HAm6eYS512ztJD95mF5wxyEQjZ6M1TwGGqpbqn3X58pWdhq,/ip4/127.0.0.1/tcp/8000
+Successfully stored value at 0 peers
+dht-put,HNaVdzDiUd21FJtXSCX4QYJ5yqQxNRjbRf6fEeHdN54r,Test value from checker
+dht-get,HNaVdzDiUd21FJtXSCX4QYJ5yqQxNRjbRf6fEeHdN54r,Test value from checker
+No local peers available for network lookup
+Successfully advertised to 0 peers
+error,Failed to advertise as content provider
+provider-found,4d0bcfc8b97a7359579c957e28943b11fd09c1c3b431042eca9c98a246fc6e31,1,16Uiu2HAkx5ELMcG67ygx6Jok7X6qvnJuk3M4RehUn7zXsa3PCVsQ
+error,Exceptions from Trio nursery (1 sub-exception)
