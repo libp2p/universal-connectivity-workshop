@@ -9,12 +9,12 @@ import { multiaddr } from "@multiformats/multiaddr";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 
 async function main() {
-  //   const targets = process.argv.slice(2).map(a => multiaddr(a))
-  const targets = [
-    multiaddr(
-      "/ip4/127.0.0.1/tcp/38527/p2p/12D3KooWMBaGnf5ggeev9Mu1siELsBwrMdTes3hDpNhbbwxCfbjv"
-    ),
-  ];
+    const targets = process.argv.slice(2).map(a => multiaddr(a))
+  // const targets = [
+  //   multiaddr(
+  //     "/ip4/127.0.0.1/tcp/36765/p2p/12D3KooWSHUS7gGA1rYeemqC1k5D91rY3ME1ARFAbXyWyrrchBp7"
+  //   ),
+  // ];
   if (targets.length === 0) {
     console.error("❌  You must pass at least one multiaddr to dial");
     console.error("    Example:");
