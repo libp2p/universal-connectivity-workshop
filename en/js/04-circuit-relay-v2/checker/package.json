@@ -1,0 +1,11 @@
+{
+    "name": "circuit-relay-checker",
+    "version": "1.0.0",
+    "description": "Circuit Relay v2 Lesson Checker",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {}
+}
