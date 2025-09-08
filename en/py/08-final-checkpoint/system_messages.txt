@@ -1,0 +1,5 @@
+[15:36:10] Universal Connectivity Chat Started
+[15:36:10] Nickname: Bob
+[15:36:10] Multiaddr: /ip4/0.0.0.0/tcp/60548/p2p/QmV3ZXdepq5mK37DwRi2uTH5UTfaKgqfkg2ukVtDtkAErZ
+[15:36:10] Commands: /quit, /peers, /status, /multiaddr
+[15:36:10] Joined chat room as 'Bob'
