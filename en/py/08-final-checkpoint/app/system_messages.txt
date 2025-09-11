@@ -1,5 +1,0 @@
-[15:35:33] Universal Connectivity Chat Started
-[15:35:33] Nickname: Alice
-[15:35:33] Multiaddr: /ip4/0.0.0.0/tcp/8080/p2p/QmYPgHueJbzHqdRvbfk3aHaXaWovHdw8iDrPAbJE1DbwZT
-[15:35:33] Commands: /quit, /peers, /status, /multiaddr
-[15:35:33] Joined chat room as 'Alice'

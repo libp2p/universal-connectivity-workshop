@@ -40,25 +40,6 @@ Your final Python application will implement this complete stack:
 └─────────────────────────────────────┘
 ```
 
-## Universal Connectivity Message Protocol
-
-For interoperability with other implementations, you'll use the Universal Connectivity message format:
-
-```python
-@dataclass
-class UniversalConnectivityMessage:
-    message_type: str  # 'chat', 'file', 'webrtc', 'browser_peer_discovery'
-    data: Dict[str, Any]
-    timestamp: Optional[float] = None
-    
-    @classmethod
-    def create_chat_message(cls, message: str, sender_id: str = ""):
-        return cls(
-            message_type="chat",
-            data={"message": message, "sender_id": sender_id}
-        )
-```
-
 ## Your Challenge
 
 Implement a complete py-libp2p application that:
@@ -82,159 +63,116 @@ Your implementation must:
 - ✅ Receive and display chat messages from other peers
 - ✅ Initialize Kademlia DHT for peer discovery (if bootstrap peers provided)
 
-## Implementation Hints
+## Implementation Hints: chatroom.py
 
 <details>
-<summary>🔍 Getting Started (Click to expand)</summary>
 
-Start with the basic imports and host setup:
+### 🔍 Getting Started: Module Docstring (Click to expand)
+ 
 ```python
-import trio
-from libp2p import new_host
-from libp2p.crypto.secp256k1 import create_new_key_pair
-from libp2p.pubsub.gossipsub import GossipSub
-from libp2p.pubsub.pubsub import Pubsub
-from libp2p.kad_dht.kad_dht import KadDHT, DHTMode
-from libp2p.tools.async_service import background_trio_service
+"""
+ChatRoom module for Universal Connectivity Python Peer
 
-# Create host
-key_pair = create_new_key_pair()
-host = new_host(key_pair=key_pair)
-peer_id = str(host.get_id())
-print(f"Local peer id: {peer_id}")
+This module handles chat room functionality including message handling,
+pubsub subscriptions, and peer discovery.
+"""
 ```
+<summary>This is the module-level docstring. It provides a high-level overview of what the module does: it manages chat room features in a peer-to-peer (P2P) system called "Universal Connectivity Python Peer." Key responsibilities include processing messages, managing subscriptions to Pub/Sub (publish-subscribe) topics, and discovering other peers on the network.</summary>
+
 </details>
 
 <details>
-<summary>🔍 Protocol Setup (Click to expand)</summary>
 
-Configure all protocols:
-```python
-# Setup Gossipsub
-gossipsub = GossipSub(
-    protocols=["/meshsub/1.0.0"],
-    degree=3,
-    degree_low=2,
-    degree_high=4,
-    heartbeat_interval=10.0
-)
-pubsub = Pubsub(host, gossipsub)
-
-# Setup Kademlia DHT
-dht = KadDHT(host, DHTMode.CLIENT)
-
-# Setup other protocols
-from libp2p.protocols.identify.identify import Identify
-from libp2p.protocols.ping.ping import Ping
-
-identify = Identify(host, "/ipfs/id/1.0.0")
-ping = Ping(host, "/ipfs/ping/1.0.0")
-```
-</details>
-
-<details>
-<summary>🔍 Service Management (Click to expand)</summary>
-
-Start all services using trio nursery:
-```python
-listen_addr = Multiaddr(f"/ip4/0.0.0.0/tcp/{port}")
-
-async with host.run(listen_addrs=[listen_addr]):
-    async with trio.open_nursery() as nursery:
-        # Start all services
-        nursery.start_soon(background_trio_service(pubsub).astart)
-        nursery.start_soon(background_trio_service(dht).astart)
-        nursery.start_soon(background_trio_service(identify).astart)
-        nursery.start_soon(background_trio_service(ping).astart)
-        
-        # Subscribe to topic
-        subscription = await pubsub.subscribe("universal-connectivity")
-        
-        # Start message handlers
-        nursery.start_soon(handle_messages, subscription)
-        nursery.start_soon(handle_connections, host)
-```
-</details>
-
-<details>
-<summary>🔍 Message Handling (Click to expand)</summary>
-
-Handle gossipsub messages:
-```python
-async def handle_messages(subscription):
-    async for message in subscription:
-        if str(message.from_id) == peer_id:
-            continue  # Skip our own messages
-        
-        try:
-            uc_message = UniversalConnectivityMessage.from_json(
-                message.data.decode()
-            )
-            
-            if uc_message.message_type == "chat":
-                sender = str(message.from_id)[:8]
-                chat_text = uc_message.data.get("message", "")
-                print(f"Chat from {sender}: {chat_text}")
-                
-        except Exception as e:
-            logger.debug(f"Error processing message: {e}")
-```
-</details>
-
-<details>
-<summary>🔍 Connection Management (Click to expand)</summary>
-
-Connect to remote peers:
-```python
-async def connect_to_peers(host, remote_addrs):
-    for addr_str in remote_addrs:
-        try:
-            maddr = Multiaddr(addr_str)
-            info = info_from_p2p_addr(maddr)
-            
-            host.get_peerstore().add_addrs(info.peer_id, info.addrs, 3600)
-            await host.connect(info)
-            
-            print(f"Connected to: {addr_str}")
-            
-        except Exception as e:
-            logger.error(f"Failed to connect to {addr_str}: {e}")
-```
-</details>
-
-<details>
-<summary>🔍 Complete Solution (Click to expand if stuck)</summary>
+### Imports
 
 ```python
-#!/usr/bin/env python3
-import argparse
+import base58
 import json
 import logging
-import os
-import sys
 import time
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
 import trio
-from multiaddr import Multiaddr
+from dataclasses import dataclass
+from typing import Set, Optional, AsyncIterator
 
-from libp2p import new_host
-from libp2p.crypto.secp256k1 import create_new_key_pair
-from libp2p.pubsub.gossipsub import GossipSub
+from libp2p.host.basic_host import BasicHost
+from libp2p.pubsub.pb.rpc_pb2 import Message
 from libp2p.pubsub.pubsub import Pubsub
-from libp2p.kad_dht.kad_dht import KadDHT, DHTMode
-from libp2p.tools.async_service import background_trio_service
-from libp2p.tools.utils import info_from_p2p_addr
+```
+<summary>
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("universal-connectivity")
+These are the module's imports:
+- `base58`: Used for encoding/decoding peer IDs (common in P2P systems for compact, human-readable representations).
+- `json`: For serializing/deserializing messages to/from JSON format.
+- `logging`: For logging events, errors, and info.
+- `time`: To handle timestamps for messages.
+- `trio`: An async library for concurrent I/O operations (used for asynchronous tasks like message handling).
+- `dataclasses`: To define simple data classes (e.g., for messages).
+- `typing`: For type hints like `Set`, `Optional`, and `AsyncIterator`.
+- From `libp2p`: Imports specific classes for P2P networking. `BasicHost` represents the local peer host, `Message` is a protobuf message type for Pub/Sub, and `Pubsub` handles the publish-subscribe system.
+</summary>
+</details>
 
-UNIVERSAL_CONNECTIVITY_TOPIC = "universal-connectivity"
+<details>
 
+### Logger Setup
+
+```python
+logger = logging.getLogger("chatroom")
+```
+<summary>Creates a logger named "chatroom" for general logging in this module.</summary>
+
+</details>
+
+<details>
+
+### System Logger Setup 
+
+```python
+# Create a separate logger for system messages
+system_logger = logging.getLogger("system_messages")
+system_handler = logging.FileHandler("system_messages.txt", mode='a')
+system_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+system_logger.addHandler(system_handler)
+system_logger.setLevel(logging.INFO)
+system_logger.propagate = False
+```
+<summary>
+
+This sets up a specialized logger for "system messages" (e.g., status updates, errors visible to the user). It logs to a file `system_messages.txt` in append mode (`'a'`). The formatter adds a timestamp in HH:MM:SS format. The level is set to INFO, and `propagate=False` prevents these logs from bubbling up to higher-level loggers. </summary>
+
+</details>
+
+<details>
+
+### Constants 
+
+```python
+# Chat room buffer size for incoming messages
+CHAT_ROOM_BUF_SIZE = 128
+
+# Topics used in the chat system
+PUBSUB_DISCOVERY_TOPIC = "universal-connectivity-browser-peer-discovery"
+CHAT_TOPIC = "universal-connectivity"
+```
+<summary>
+
+- `CHAT_ROOM_BUF_SIZE`: Defines a buffer size of 128 for handling incoming messages (likely for queues or streams).
+- `PUBSUB_DISCOVERY_TOPIC` and `CHAT_TOPIC`: These are string constants for Pub/Sub topics. The discovery topic is for finding other peers (possibly browser-based), and the chat topic is for actual chat messages.
+</summary>
+
+</details>
+
+<details>
+
+### ChatMessage Dataclass 
+
+```python
 @dataclass
-class UniversalConnectivityMessage:
-    message_type: str
-    data: Dict[str, Any]
+class ChatMessage:
+    """Represents a chat message."""
+    message: str
+    sender_id: str
+    sender_nick: str
     timestamp: Optional[float] = None
     
     def __post_init__(self):
@@ -242,220 +180,769 @@ class UniversalConnectivityMessage:
             self.timestamp = time.time()
     
     def to_json(self) -> str:
+        """Convert message to JSON string."""
         return json.dumps({
-            "message_type": self.message_type,
-            "data": self.data,
+            "message": self.message,
+            "sender_id": self.sender_id,
+            "sender_nick": self.sender_nick,
             "timestamp": self.timestamp
         })
     
     @classmethod
-    def from_json(cls, json_str: str):
+    def from_json(cls, json_str: str) -> "ChatMessage":
+        """Create ChatMessage from JSON string."""
         data = json.loads(json_str)
         return cls(
-            message_type=data["message_type"],
-            data=data["data"],
+            message=data["message"],
+            sender_id=data["sender_id"],
+            sender_nick=data["sender_nick"],
             timestamp=data.get("timestamp")
         )
-    
-    @classmethod
-    def create_chat_message(cls, message: str, sender_id: str = ""):
-        return cls(
-            message_type="chat",
-            data={"message": message, "sender_id": sender_id}
-        )
+```
+<summary>
 
-async def handle_messages(subscription, peer_id):
-    """Handle incoming gossipsub messages."""
-    async for message in subscription:
-        if str(message.from_id) == peer_id:
-            continue
+This defines a data class for chat messages:
+- Fields: `message` (the text), `sender_id` (peer ID of sender), `sender_nick` (nickname), `timestamp` (optional, defaults to current time via `__post_init__`).
+- `to_json`: Serializes the message to a JSON string.
+- `from_json`: Class method to deserialize a JSON string back into a `ChatMessage` object.
+This class is used to structure and handle messages in a consistent way, though the code also supports raw string messages for compatibility with a Go implementation.
+</summary>
+</details>
+<details>
+
+### ChatRoom Class Docstring and __init__
+
+```python
+class ChatRoom:
+    """
+    Represents a subscription to PubSub topics for chat functionality.
+    Messages can be published to topics and received messages are handled
+    through callback functions.
+    """
+    
+    def __init__(self, host: BasicHost, pubsub: Pubsub, nickname: str, multiaddr: str = None):
+        self.host = host
+        self.pubsub = pubsub
+        self.nickname = nickname
+        self.peer_id = str(host.get_id())
+        self.multiaddr = multiaddr or f"unknown/{self.peer_id}"
         
+        # Subscriptions
+        self.chat_subscription = None
+        self.discovery_subscription = None
+        
+        # Message handlers
+        self.message_handlers = []
+        self.system_message_handlers = []
+        
+        # Running state
+        self.running = False
+        
+        logger.info(f"ChatRoom initialized for peer {self.peer_id[:8]}... with nickname '{nickname}'")
+        self._log_system_message("Universal Connectivity Chat Started")
+        self._log_system_message(f"Nickname: {nickname}")
+        self._log_system_message(f"Multiaddr: {self.multiaddr}")
+        self._log_system_message("Commands: /quit, /peers, /status, /multiaddr")
+```
+
+<summary>
+
+- Class docstring: Describes the class as managing Pub/Sub subscriptions for chat, with publishing and callback-based handling.
+- `__init__`: Initializes the chat room with a `host` (local P2P host), `pubsub` (Pub/Sub system), `nickname`, and optional `multiaddr` (multiaddress for connecting to this peer; defaults to a placeholder).
+  - Sets `peer_id` from the host.
+  - Initializes subscriptions to None, empty lists for handlers, and `running=False`.
+  - Logs initialization and system messages (e.g., startup info and available commands).
+
+</summary>
+</details>
+<details>
+
+### _log_system_message Method
+
+```python
+    def _log_system_message(self, message: str):
+        """Log system message to file."""
+        system_logger.info(message)
+```
+<summary>
+Private method to log a system message using the specialized logger.
+</summary>
+</details>
+<details>
+
+### join_chat_room Class Method
+
+```python
+    @classmethod
+    async def join_chat_room(cls, host: BasicHost, pubsub: Pubsub, nickname: str, multiaddr: str = None) -> "ChatRoom":
+        """Create and join a chat room."""
+        chat_room = cls(host, pubsub, nickname, multiaddr)
+        await chat_room._subscribe_to_topics()
+        chat_room._log_system_message(f"Joined chat room as '{nickname}'")
+        return chat_room
+```
+
+<summary>
+
+Async class method to create a `ChatRoom` instance, subscribe to topics, log the join, and return the instance. This is a convenience factory method for joining a chat room.
+</summary>
+</details>
+<details>
+
+### _subscribe_to_topics Method
+
+```python
+    async def _subscribe_to_topics(self):
+        """Subscribe to all necessary topics."""
         try:
-            uc_message = UniversalConnectivityMessage.from_json(
-                message.data.decode()
-            )
+            # Subscribe to chat topic
+            self.chat_subscription = await self.pubsub.subscribe(CHAT_TOPIC)
+            logger.info(f"Subscribed to chat topic: {CHAT_TOPIC}")
             
-            if uc_message.message_type == "chat":
-                sender = str(message.from_id)[:8]
-                chat_text = uc_message.data.get("message", "")
-                print(f"Received chat message from {sender}: {chat_text}")
+            # Subscribe to discovery topic
+            self.discovery_subscription = await self.pubsub.subscribe(PUBSUB_DISCOVERY_TOPIC)
+            logger.info(f"Subscribed to discovery topic: {PUBSUB_DISCOVERY_TOPIC}")
+            
+        except Exception as e:
+            logger.error(f"Failed to subscribe to topics: {e}")
+            self._log_system_message(f"ERROR: Failed to subscribe to topics: {e}")
+            raise
+```
+<summary>
+Async private method to subscribe to the chat and discovery topics using the Pub/Sub system. Stores the subscriptions and logs success or failure (raising the exception after logging).
+</summary>
+</details>
+<details>
+
+### publish_message Method
+
+```python
+    async def publish_message(self, message: str):
+        """Publish a chat message in Go-compatible format (raw string)."""
+        try:
+            # Check if we have any peers connected
+            peer_count = len(self.pubsub.peers)
+            logger.info(f"📤 Publishing message to {peer_count} peers: {message}")
+            logger.info(f"Total pubsub peers: {list(self.pubsub.peers.keys())}")
+            
+            # Send raw message string like Go peer (compatible format)
+            await self.pubsub.publish(CHAT_TOPIC, message.encode())
+            logger.info(f"✅ Message published successfully to topic '{CHAT_TOPIC}'")
+            
+            if peer_count == 0:
+                print(f"⚠️  No peers connected - message sent to topic but no one will receive it")
+            else:
+                print(f"✓ Message sent to {peer_count} peer(s)")
                 
         except Exception as e:
-            logger.debug(f"Error processing message: {e}")
-            # Fallback to raw text
-            try:
-                raw_text = message.data.decode()
-                sender = str(message.from_id)[:8]
-                print(f"Received raw message from {sender}: {raw_text}")
-            except:
-                pass
-
-async def handle_connections(host, peer_id):
-    """Monitor connection events."""
-    connected_peers = set()
-    
-    while True:
-        current_peers = set(str(p) for p in host.get_connected_peers())
-        
-        # New connections
-        new_peers = current_peers - connected_peers
-        for peer in new_peers:
-            print(f"Connected to: {peer}")
-        
-        # Disconnections  
-        disconnected = connected_peers - current_peers
-        for peer in disconnected:
-            print(f"Connection to {peer} closed")
-        
-        connected_peers = current_peers
-        await trio.sleep(2)
-
-async def connect_to_peers(host, remote_addrs):
-    """Connect to remote peers."""
-    for addr_str in remote_addrs:
-        try:
-            logger.info(f"Attempting to connect to: {addr_str}")
-            maddr = Multiaddr(addr_str)
-            info = info_from_p2p_addr(maddr)
-            
-            host.get_peerstore().add_addrs(info.peer_id, info.addrs, 3600)
-            await host.connect(info)
-            
-            print(f"Connected to: {addr_str}")
-            
+            logger.error(f"❌ Failed to publish message: {e}")
+            print(f"❌ Error sending message: {e}")
+                
         except Exception as e:
-            logger.error(f"Failed to connect to {addr_str}: {e}")
+            logger.error(f"Failed to publish message: {e}")
+            self._log_system_message(f"ERROR: Failed to publish message: {e}")
+```
+<summary>
 
-async def send_intro_message(pubsub, peer_id):
-    """Send introductory chat message."""
-    try:
-        intro_msg = UniversalConnectivityMessage.create_chat_message(
-            "Hello from the Universal Connectivity Workshop!",
-            peer_id
-        )
-        
-        await pubsub.publish(
-            UNIVERSAL_CONNECTIVITY_TOPIC,
-            intro_msg.to_json().encode()
-        )
-        
-        logger.info("Sent introductory message")
-        
-    except Exception as e:
-        logger.error(f"Failed to send intro message: {e}")
+Async method to publish a message to the chat topic. It logs the peer count, publishes the message as a raw encoded string (for compatibility with a Go version), and provides user feedback via print. Handles errors with logging and printing. Note: There's a duplicate `except` block, which might be a typo.
+</summary>
+</details>
+<details>
 
-async def main_async(args):
-    print("Starting Universal Connectivity Application...")
-    
-    # Get remote peer from environment or args
-    remote_peer = os.getenv("REMOTE_PEER")
-    remote_addrs = []
-    
-    if remote_peer:
-        remote_addrs.append(remote_peer)
-    if args.connect:
-        remote_addrs.extend(args.connect)
-    
-    # Setup host and protocols
-    key_pair = create_new_key_pair()
-    host = new_host(key_pair=key_pair)
-    peer_id = str(host.get_id())
-    
-    print(f"Local peer id: {peer_id}")
-    
-    # Configure protocols
-    gossipsub = GossipSub(
-        protocols=["/meshsub/1.0.0"],
-        degree=3,
-        degree_low=2,
-        degree_high=4,
-        heartbeat_interval=10.0
-    )
-    pubsub = Pubsub(host, gossipsub)
-    dht = KadDHT(host, DHTMode.CLIENT)
-    
-    # Start services
-    listen_addr = Multiaddr(f"/ip4/0.0.0.0/tcp/{args.port}")
-    
-    async with host.run(listen_addrs=[listen_addr]):
-        # Print listening addresses
-        for addr in host.get_addrs():
-            print(f"Listening on: {addr}/p2p/{peer_id}")
+### _handle_chat_messages Method
+
+```python
+    async def _handle_chat_messages(self):
+        """Handle incoming chat messages in Go-compatible format."""
+        logger.debug("📨 Starting chat message handler")
+        
+        try:
+            async for message in self._message_stream(self.chat_subscription):
+                try:
+                    # Handle raw string messages like Go peer
+                    raw_message = message.data.decode()
+                    sender_id = str(message.from_id) if message.from_id else "unknown"
+                    
+                    logger.info(f"📨 Received message from {sender_id}: {raw_message}")
+                    
+                    # Skip our own messages
+                    if message.from_id and str(message.from_id) == self.peer_id:
+                        logger.info("📨 Ignoring own message")
+                        continue
+                    
+                    # Create ChatMessage object for handlers
+                    chat_msg = ChatMessage(
+                        message=raw_message,
+                        sender_id=sender_id,
+                        sender_nick=sender_id[-8:] if len(sender_id) > 8 else sender_id  # Use last 8 chars like Go
+                    )
+                    
+                    # Call message handlers
+                    for handler in self.message_handlers:
+                        try:
+                            await handler(chat_msg)
+                        except Exception as e:
+                            logger.error(f"❌ Error in message handler: {e}")
+                    
+                    # Default console output if no handlers
+                    if not self.message_handlers:
+                        print(f"[{chat_msg.sender_nick}]: {chat_msg.message}")
+                
+                except Exception as e:
+                    logger.error(f"❌ Error processing chat message: {e}")
+        
+        except Exception as e:
+            logger.error(f"❌ Error in chat message handler: {e}")
+```
+<summary>
+
+Async private method to process incoming chat messages from the subscription stream. Decodes raw messages, skips self-sent ones, creates a `ChatMessage` object (using last 8 chars of sender ID as nick for brevity, mimicking Go), calls registered handlers, and falls back to printing if no handlers are set. Logs errors at each level.
+</summary>
+</details>
+<details>
+
+### _handle_discovery_messages Method
+
+```python
+    async def _handle_discovery_messages(self):
+        """Handle incoming discovery messages."""
+        logger.debug("Starting discovery message handler")
+        
+        try:
+            async for message in self._message_stream(self.discovery_subscription):
+                try:
+                    # Skip our own messages
+                    if str(message.from_id) == self.peer_id:
+                        continue
+                    
+                    # Handle discovery message (simplified - just log for now)
+                    sender_id = base58.b58encode(message.from_id).decode()
+                    logger.info(f"Discovery message from peer: {sender_id}")
+                
+                except Exception as e:
+                    logger.error(f"Error processing discovery message: {e}")
+        
+        except Exception as e:
+            logger.error(f"Error in discovery message handler: {e}")
+```
+
+<summary>
+
+Async private method similar to `_handle_chat_messages` but for discovery topic. Skips self-messages, encodes sender ID in base58, and logs the discovery event (handling is minimal/simplified here). </summary>
+
+</details>
+<details>
+
+### _message_stream Method
+
+```Python
+    async def _message_stream(self, subscription) -> AsyncIterator[Message]:
+        """Create an async iterator for subscription messages."""
+        while self.running:
+            try:
+                message = await subscription.get()
+                yield message
+            except Exception as e:
+                logger.error(f"Error getting message from subscription: {e}")
+                await trio.sleep(1)  # Avoid tight loop on error
+```
+
+<summary>
+
+Async private generator to yield messages from a subscription. Loops while `running` is True, fetches messages, yields them, and handles errors with a 1-second sleep to prevent CPU spin.
+</summary>
+</details>
+<details>
+
+### start_message_handlers Method
+
+```python
+    async def start_message_handlers(self):
+        """Start all message handler tasks."""
+        self.running = True
         
         async with trio.open_nursery() as nursery:
-            # Start protocol services
-            nursery.start_soon(
-                lambda: background_trio_service(pubsub).astart()
-            )
-            nursery.start_soon(
-                lambda: background_trio_service(dht).astart()
-            )
+            nursery.start_soon(self._handle_chat_messages)
+            nursery.start_soon(self._handle_discovery_messages)
+```
+<summary>
+
+Async method to start the chat room's message processing. Sets `running=True` and uses Trio's nursery to concurrently run the chat and discovery handlers.
+</summary>
+</details>
+<details>
+
+### add_message_handler and add_system_message_handler Methods 
+
+```python
+    def add_message_handler(self, handler):
+        """Add a custom message handler."""
+        self.message_handlers.append(handler)
+    
+    def add_system_message_handler(self, handler):
+        """Add a custom system message handler."""
+        self.system_message_handlers.append(handler)
+```
+<summary>
+Methods to register custom async callbacks for handling chat messages or system messages. These allow extending the behavior (e.g., for UI integration).
+</summary>
+</details>
+<details>
+
+### run_interactive Method
+
+```python
+    async def run_interactive(self):
+        """Run interactive chat mode."""
+        print(f"\n=== Universal Connectivity Chat ===")
+        print(f"Nickname: {self.nickname}")
+        print(f"Peer ID: {self.peer_id}")
+        print(f"Type messages and press Enter to send. Type 'quit' to exit.")
+        print(f"Commands: /peers, /status, /multiaddr")
+        print()
+        
+        async with trio.open_nursery() as nursery:
+            # Start message handlers
+            nursery.start_soon(self.start_message_handlers)
             
-            # Wait for initialization
-            await trio.sleep(1)
-            
-            # Subscribe to topic
-            subscription = await pubsub.subscribe(UNIVERSAL_CONNECTIVITY_TOPIC)
-            
-            # Connect to remote peers
-            if remote_addrs:
-                await connect_to_peers(host, remote_addrs)
-                await trio.sleep(2)  # Wait for connections
+            # Start input handler
+            nursery.start_soon(self._input_handler)
+```
+<summary>
+Async method for an interactive console-based chat. Prints welcome/info, then uses a Trio nursery to run message handlers and an input handler concurrently.
+</summary>
+</details>
+<details>
+
+### _input_handler Method
+
+```python
+    async def _input_handler(self):
+        """Handle user input in interactive mode."""
+        try:
+            while self.running:
+                try:
+                    # Use trio's to_thread to avoid blocking the event loop
+                    message = await trio.to_thread.run_sync(input)
+                    
+                    if message.lower() in ["quit", "exit", "q"]:
+                        print("Goodbye!")
+                        self.running = False
+                        break
+                    
+                    # Handle special commands
+                    elif message.strip() == "/peers":
+                        peers = self.get_connected_peers()
+                        if peers:
+                            print(f"📡 Connected peers ({len(peers)}):")
+                            for peer in peers:
+                                print(f"  - {peer[:8]}...")
+                        else:
+                            print("📡 No peers connected")
+                        continue
+                    
+                    elif message.strip() == "/multiaddr":
+                        print(f"\n📋 Copy this multiaddress:")
+                        print(f"{self.multiaddr}")
+                        print()
+                        continue
+                    
+                    elif message.strip() == "/status":
+                        peer_count = self.get_peer_count()
+                        print(f"📊 Status:")
+                        print(f"  - Multiaddr: {self.multiaddr}")
+                        print(f"  - Nickname: {self.nickname}")
+                        print(f"  - Connected peers: {peer_count}")
+                        print(f"  - Subscribed topics: chat, discovery")
+                        continue
+                    
+                    if message.strip():
+                        await self.publish_message(message)
                 
-                # Send intro message
-                await send_intro_message(pubsub, peer_id)
+                except EOFError:
+                    print("\nGoodbye!")
+                    self.running = False
+                    break
+                except Exception as e:
+                    logger.error(f"Error in input handler: {e}")
+                    await trio.sleep(0.1)
+        
+        except Exception as e:
+            logger.error(f"Fatal error in input handler: {e}")
+            self.running = False
+```
+<summary>
+
+Async private method for handling user input in interactive mode. Uses `trio.to_thread.run_sync` to run blocking `input()` without freezing the async loop. Processes commands like `/quit` (exits), `/peers` (lists peers), `/multiaddr` (shows address), `/status` (shows info). For regular messages, publishes them. Handles EOF (e.g., Ctrl+D) and errors gracefully.
+<summary>
+</details>
+<details>
+
+### stop Method
+
+```python
+    async def stop(self):
+        """Stop the chat room."""
+        self.running = False
+        logger.info("ChatRoom stopped")
+```
+<summary> 
+
+Async method to stop the chat room by setting `running=False` and logging the stop.
+
+</summary>
+</details>
+<details>
+
+### get_connected_peers Method
+```python
+    def get_connected_peers(self) -> Set[str]:
+        """Get list of connected peer IDs."""
+        return set(str(peer_id) for peer_id in self.pubsub.peers.keys())
+```
+<summary> Returns a set of connected peer IDs as strings from the Pub/Sub peers.</summary>
+
+</details>
+<details>
+
+### get_peer_count Method
+```python
+    def get_peer_count(self) -> int:
+        """Get number of connected peers."""
+        return len(self.pubsub.peers)
+```
+<summary> Returns the count of connected peers from the Pub/Sub system.</summary>
+</details>
+
+<details>
+<summary>🔍 Complete Solution (Click to expand if stuck)</summary>
+
+```python
+"""
+ChatRoom module for Universal Connectivity Python Peer
+
+This module handles chat room functionality including message handling,
+pubsub subscriptions, and peer discovery.
+"""
+
+import base58
+import json
+import logging
+import time
+import trio
+from dataclasses import dataclass
+from typing import Set, Optional, AsyncIterator
+
+from libp2p.host.basic_host import BasicHost
+from libp2p.pubsub.pb.rpc_pb2 import Message
+from libp2p.pubsub.pubsub import Pubsub
+
+logger = logging.getLogger("chatroom")
+
+# Create a separate logger for system messages
+system_logger = logging.getLogger("system_messages")
+system_handler = logging.FileHandler("system_messages.txt", mode='a')
+system_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+system_logger.addHandler(system_handler)
+system_logger.setLevel(logging.INFO)
+system_logger.propagate = False  # Don't send to parent loggers
+
+# Chat room buffer size for incoming messages
+CHAT_ROOM_BUF_SIZE = 128
+
+# Topics used in the chat system
+PUBSUB_DISCOVERY_TOPIC = "universal-connectivity-browser-peer-discovery"
+CHAT_TOPIC = "universal-connectivity"
+
+
+@dataclass
+class ChatMessage:
+    """Represents a chat message."""
+    message: str
+    sender_id: str
+    sender_nick: str
+    timestamp: Optional[float] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = time.time()
+    
+    def to_json(self) -> str:
+        """Convert message to JSON string."""
+        return json.dumps({
+            "message": self.message,
+            "sender_id": self.sender_id,
+            "sender_nick": self.sender_nick,
+            "timestamp": self.timestamp
+        })
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> "ChatMessage":
+        """Create ChatMessage from JSON string."""
+        data = json.loads(json_str)
+        return cls(
+            message=data["message"],
+            sender_id=data["sender_id"],
+            sender_nick=data["sender_nick"],
+            timestamp=data.get("timestamp")
+        )
+
+
+class ChatRoom:
+    """
+    Represents a subscription to PubSub topics for chat functionality.
+    Messages can be published to topics and received messages are handled
+    through callback functions.
+    """
+    
+    def __init__(self, host: BasicHost, pubsub: Pubsub, nickname: str, multiaddr: str = None):
+        self.host = host
+        self.pubsub = pubsub
+        self.nickname = nickname
+        self.peer_id = str(host.get_id())
+        self.multiaddr = multiaddr or f"unknown/{self.peer_id}"
+        
+        # Subscriptions
+        self.chat_subscription = None
+        self.discovery_subscription = None
+        
+        # Message handlers
+        self.message_handlers = []
+        self.system_message_handlers = []
+        
+        # Running state
+        self.running = False
+        
+        logger.info(f"ChatRoom initialized for peer {self.peer_id[:8]}... with nickname '{nickname}'")
+        self._log_system_message("Universal Connectivity Chat Started")
+        self._log_system_message(f"Nickname: {nickname}")
+        self._log_system_message(f"Multiaddr: {self.multiaddr}")
+        self._log_system_message("Commands: /quit, /peers, /status, /multiaddr")
+    
+    def _log_system_message(self, message: str):
+        """Log system message to file."""
+        system_logger.info(message)
+    
+    @classmethod
+    async def join_chat_room(cls, host: BasicHost, pubsub: Pubsub, nickname: str, multiaddr: str = None) -> "ChatRoom":
+        """Create and join a chat room."""
+        chat_room = cls(host, pubsub, nickname, multiaddr)
+        await chat_room._subscribe_to_topics()
+        chat_room._log_system_message(f"Joined chat room as '{nickname}'")
+        return chat_room
+    
+    async def _subscribe_to_topics(self):
+        """Subscribe to all necessary topics."""
+        try:
+            # Subscribe to chat topic
+            self.chat_subscription = await self.pubsub.subscribe(CHAT_TOPIC)
+            logger.info(f"Subscribed to chat topic: {CHAT_TOPIC}")
             
-            # Start handlers
-            nursery.start_soon(handle_messages, subscription, peer_id)
-            nursery.start_soon(handle_connections, host, peer_id)
+            # Subscribe to discovery topic
+            self.discovery_subscription = await self.pubsub.subscribe(PUBSUB_DISCOVERY_TOPIC)
+            logger.info(f"Subscribed to discovery topic: {PUBSUB_DISCOVERY_TOPIC}")
             
-            logger.info("Universal Connectivity Application started successfully!")
+        except Exception as e:
+            logger.error(f"Failed to subscribe to topics: {e}")
+            self._log_system_message(f"ERROR: Failed to subscribe to topics: {e}")
+            raise
+    
+    async def publish_message(self, message: str):
+        """Publish a chat message in Go-compatible format (raw string)."""
+        try:
+            # Check if we have any peers connected
+            peer_count = len(self.pubsub.peers)
+            logger.info(f"📤 Publishing message to {peer_count} peers: {message}")
+            logger.info(f"Total pubsub peers: {list(self.pubsub.peers.keys())}")
             
-            # Keep running
+            # Send raw message string like Go peer (compatible format)
+            await self.pubsub.publish(CHAT_TOPIC, message.encode())
+            logger.info(f"✅ Message published successfully to topic '{CHAT_TOPIC}'")
+            
+            if peer_count == 0:
+                print(f"⚠️  No peers connected - message sent to topic but no one will receive it")
+            else:
+                print(f"✓ Message sent to {peer_count} peer(s)")
+                
+        except Exception as e:
+            logger.error(f"❌ Failed to publish message: {e}")
+            print(f"❌ Error sending message: {e}")
+                
+        except Exception as e:
+            logger.error(f"Failed to publish message: {e}")
+            self._log_system_message(f"ERROR: Failed to publish message: {e}")
+    
+    async def _handle_chat_messages(self):
+        """Handle incoming chat messages in Go-compatible format."""
+        logger.debug("📨 Starting chat message handler")
+        
+        try:
+            async for message in self._message_stream(self.chat_subscription):
+                try:
+                    # Handle raw string messages like Go peer
+                    raw_message = message.data.decode()
+                    sender_id = str(message.from_id) if message.from_id else "unknown"
+                    
+                    logger.info(f"📨 Received message from {sender_id}: {raw_message}")
+                    
+                    # Skip our own messages
+                    if message.from_id and str(message.from_id) == self.peer_id:
+                        logger.info("📨 Ignoring own message")
+                        continue
+                    
+                    # Create ChatMessage object for handlers
+                    chat_msg = ChatMessage(
+                        message=raw_message,
+                        sender_id=sender_id,
+                        sender_nick=sender_id[-8:] if len(sender_id) > 8 else sender_id  # Use last 8 chars like Go
+                    )
+                    
+                    # Call message handlers
+                    for handler in self.message_handlers:
+                        try:
+                            await handler(chat_msg)
+                        except Exception as e:
+                            logger.error(f"❌ Error in message handler: {e}")
+                    
+                    # Default console output if no handlers
+                    if not self.message_handlers:
+                        print(f"[{chat_msg.sender_nick}]: {chat_msg.message}")
+                
+                except Exception as e:
+                    logger.error(f"❌ Error processing chat message: {e}")
+        
+        except Exception as e:
+            logger.error(f"❌ Error in chat message handler: {e}")
+    
+    async def _handle_discovery_messages(self):
+        """Handle incoming discovery messages."""
+        logger.debug("Starting discovery message handler")
+        
+        try:
+            async for message in self._message_stream(self.discovery_subscription):
+                try:
+                    # Skip our own messages
+                    if str(message.from_id) == self.peer_id:
+                        continue
+                    
+                    # Handle discovery message (simplified - just log for now)
+                    sender_id = base58.b58encode(message.from_id).decode()
+                    logger.info(f"Discovery message from peer: {sender_id}")
+                
+                except Exception as e:
+                    logger.error(f"Error processing discovery message: {e}")
+        
+        except Exception as e:
+            logger.error(f"Error in discovery message handler: {e}")
+    
+    async def _message_stream(self, subscription) -> AsyncIterator[Message]:
+        """Create an async iterator for subscription messages."""
+        while self.running:
             try:
-                await trio.sleep_forever()
-            except KeyboardInterrupt:
-                logger.info("Shutting down...")
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Universal Connectivity Application - Python"
-    )
-    parser.add_argument(
-        "-c", "--connect",
-        action="append",
-        default=[],
-        help="Remote peer address to connect to"
-    )
-    parser.add_argument(
-        "-p", "--port",
-        type=int,
-        default=0,
-        help="Port to listen on (0 for random)"
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Enable debug logging"
-    )
-    return parser.parse_args()
-
-def main():
-    args = parse_args()
+                message = await subscription.get()
+                yield message
+            except Exception as e:
+                logger.error(f"Error getting message from subscription: {e}")
+                await trio.sleep(1)  # Avoid tight loop on error
     
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+    async def start_message_handlers(self):
+        """Start all message handler tasks."""
+        self.running = True
+        
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(self._handle_chat_messages)
+            nursery.start_soon(self._handle_discovery_messages)
     
-    try:
-        trio.run(main_async, args)
-    except KeyboardInterrupt:
-        print("\nGoodbye!")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+    def add_message_handler(self, handler):
+        """Add a custom message handler."""
+        self.message_handlers.append(handler)
+    
+    def add_system_message_handler(self, handler):
+        """Add a custom system message handler."""
+        self.system_message_handlers.append(handler)
+    
+    async def run_interactive(self):
+        """Run interactive chat mode."""
+        print(f"\n=== Universal Connectivity Chat ===")
+        print(f"Nickname: {self.nickname}")
+        print(f"Peer ID: {self.peer_id}")
+        print(f"Type messages and press Enter to send. Type 'quit' to exit.")
+        print(f"Commands: /peers, /status, /multiaddr")
+        print()
+        
+        async with trio.open_nursery() as nursery:
+            # Start message handlers
+            nursery.start_soon(self.start_message_handlers)
+            
+            # Start input handler
+            nursery.start_soon(self._input_handler)
+    
+    async def _input_handler(self):
+        """Handle user input in interactive mode."""
+        try:
+            while self.running:
+                try:
+                    # Use trio's to_thread to avoid blocking the event loop
+                    message = await trio.to_thread.run_sync(input)
+                    
+                    if message.lower() in ["quit", "exit", "q"]:
+                        print("Goodbye!")
+                        self.running = False
+                        break
+                    
+                    # Handle special commands
+                    elif message.strip() == "/peers":
+                        peers = self.get_connected_peers()
+                        if peers:
+                            print(f"📡 Connected peers ({len(peers)}):")
+                            for peer in peers:
+                                print(f"  - {peer[:8]}...")
+                        else:
+                            print("📡 No peers connected")
+                        continue
+                    
+                    elif message.strip() == "/multiaddr":
+                        print(f"\n📋 Copy this multiaddress:")
+                        print(f"{self.multiaddr}")
+                        print()
+                        continue
+                    
+                    elif message.strip() == "/status":
+                        peer_count = self.get_peer_count()
+                        print(f"📊 Status:")
+                        print(f"  - Multiaddr: {self.multiaddr}")
+                        print(f"  - Nickname: {self.nickname}")
+                        print(f"  - Connected peers: {peer_count}")
+                        print(f"  - Subscribed topics: chat, discovery")
+                        continue
+                    
+                    if message.strip():
+                        await self.publish_message(message)
+                
+                except EOFError:
+                    print("\nGoodbye!")
+                    self.running = False
+                    break
+                except Exception as e:
+                    logger.error(f"Error in input handler: {e}")
+                    await trio.sleep(0.1)
+        
+        except Exception as e:
+            logger.error(f"Fatal error in input handler: {e}")
+            self.running = False
+    
+    async def stop(self):
+        """Stop the chat room."""
+        self.running = False
+        logger.info("ChatRoom stopped")
+    
+    def get_connected_peers(self) -> Set[str]:
+        """Get list of connected peer IDs."""
+        return set(str(peer_id) for peer_id in self.pubsub.peers.keys())
+    
+    def get_peer_count(self) -> int:
+        """Get number of connected peers."""
+        return len(self.pubsub.peers)
 ```
 
 **Requirements (requirements.txt):**
@@ -464,6 +951,9 @@ libp2p>=0.4.0
 trio>=0.20.0
 multiaddr>=0.0.9
 base58>=2.1.0
+janus>=2.0.0
+trio_asyncio>=0.15.0
+textual>=0.79.1
 ```
 </details>
 
@@ -473,18 +963,12 @@ Run your application and verify it:
 
 ### Terminal 1 (Server/Bootstrap node):
 ```bash
-python3 app/main.py -p 8000 -v
+python app/main.py --nick alice --ui -p 4001
 ```
 
 ### Terminal 2 (Client connecting to server):
 ```bash
-export REMOTE_PEER="/ip4/127.0.0.1/tcp/8000/p2p/YOUR_PEER_ID_FROM_TERMINAL_1"
-python3 app/main.py -v
-```
-
-Or using the connect flag:
-```bash
-python3 app/main.py -c "/ip4/127.0.0.1/tcp/8000/p2p/YOUR_PEER_ID" -v
+python app/main.py --nick bob --ui -c /ip4/127.0.0.1/tcp/4001/p2p/<peer id>
 ```
 
 Your application should:
