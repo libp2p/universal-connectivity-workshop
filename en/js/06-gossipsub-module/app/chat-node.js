@@ -1,10 +1,11 @@
 import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
-import { webSockets } from '@libp2p/websockets'
 import { noise } from '@chainsafe/libp2p-noise'
 import { yamux } from '@chainsafe/libp2p-yamux'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 import { identify } from '@libp2p/identify'
+import { createEd25519PeerId } from '@libp2p/peer-id-factory'
+import { multiaddr } from '@multiformats/multiaddr'
 import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import readline from 'readline'
@@ -12,18 +13,22 @@ import readline from 'readline'
 const TOPIC = 'gossipsub-chat'
 
 async function createNode() {
+  const peerId = await createEd25519PeerId()
+  
   const node = await createLibp2p({
+    peerId,
     addresses: {
-      listen: [
-        '/ip4/0.0.0.0/tcp/0',
-        '/ip4/0.0.0.0/tcp/0/ws'
-      ]
+      listen: ['/ip4/0.0.0.0/tcp/0']
     },
-    transports: [tcp(), webSockets()],
+    transports: [tcp()],
     connectionEncrypters: [noise()],
     streamMuxers: [yamux()],
     services: {
-      pubsub: gossipsub(),
+      pubsub: gossipsub({
+        emitSelf: false,
+        allowPublishToZeroPeers: true,
+        messageProcessingConcurrency: 10
+      }),
       identify: identify()
     }
   })
@@ -31,33 +36,46 @@ async function createNode() {
 }
 
 async function main() {
-  const [node1, node2]= await Promise.all([
-    createNode(),
-    createNode()
-  ])
+  const node = await createNode()
+  await node.start()
   
-  console.log('Chat node started with Peer ID:', node1.peerId.toString())
-  node1.getMultiaddrs().forEach(addr => {
+  console.log('Chat node started with Peer ID:', node.peerId.toString())
+  node.getMultiaddrs().forEach(addr => {
     console.log('Listening on:', addr.toString())
   })
 
+  // Check for remote peer address from command line
+  const remoteAddr = process.argv[2]
+  if (remoteAddr) {
+    console.log(`\n💡 Connecting to remote peer: ${remoteAddr}`)
+  } else {
+    console.log('\n💡 To connect to another chat node, run:')
+    console.log(`   node chat-node.js <multiaddr>`)
+    node.getMultiaddrs().forEach(addr => {
+      console.log(`   Example: node chat-node.js ${addr.toString()}`)
+    })
+  }
+
   // Listen for incoming messages
-  node1.services.pubsub.addEventListener('message', (evt) => {
+  node.services.pubsub.addEventListener('message', (evt) => {
     const message = uint8ArrayToString(evt.detail.data)
     const fromPeer = evt.detail.from.toString()
     console.log(`MESSAGE RECEIVED from ${fromPeer}: "${message}" on topic ${evt.detail.topic}`)
   })
 
   // Subscribe to the chat topic
-  await node1.services.pubsub.subscribe(TOPIC)
-  console.log(`Node 1 Subscribed to topic: ${TOPIC}`)
+  await node.services.pubsub.subscribe(TOPIC)
+  console.log(`Subscribed to topic: ${TOPIC}`)
 
+  // Connect to remote peer if provided
+  if (remoteAddr) {
     try {
-      await node1.dial(node2.getMultiaddrs())
-      console.log(`Connected to Node_2:`, node2.peerId.toString())
+      await node.dial(multiaddr(remoteAddr))
+      console.log(`Connected to remote peer: ${remoteAddr}`)
     } catch (err) {
-      console.error('Failed to connect to Node_2:', err)
+      console.error('Failed to connect to remote peer:', err.message)
     }
+  }
 
   // Set up interactive chat
   const rl = readline.createInterface({
@@ -74,39 +92,43 @@ async function main() {
   rl.on('line', async (input) => {
     if (input.toLowerCase() === 'quit') {
       console.log('Goodbye!')
+      await node.stop()
       process.exit(0)
     }
 
     if (input.toLowerCase() === 'peers') {
-      const peers = node1.getConnections().map(conn => conn.remotePeer.toString())
-      if (peers.length === 0) {
+      const connections = node.getConnections()
+      if (connections.length === 0) {
         console.log('No peers connected. Start another chat node and connect to this one!')
       } else {
-        console.log('Connected peers:', peers)
+        console.log('Connected peers:')
+        connections.forEach(conn => {
+          console.log(`  - ${conn.remotePeer.toString()}`)
+        })
       }
+      
+      // Show topic subscribers
+      const topicPeers = node.services.pubsub.getSubscribers(TOPIC)
+      console.log(`Peers subscribed to topic "${TOPIC}": ${topicPeers.length}`)
+      topicPeers.forEach(peer => {
+        console.log(`  - ${peer.toString()}`)
+      })
       return
     }
 
     if (input.toLowerCase() === 'help') {
       console.log('\n=== Help ===')
       console.log('• Type any message to send it to all connected peers')
-      console.log('• Type "peers" to see connected peers')
+      console.log('• Type "peers" to see connected peers and topic subscribers')
       console.log('• Type "quit" to exit')
-      console.log('• To connect to another node, run: npm start in another terminal')
+      console.log('• To connect to another node, run: node chat-node.js <multiaddr>')
       console.log('• Make sure at least 2 nodes are connected to exchange messages\n')
       return
     }
 
-    node2.services.pubsub.addEventListener("message", (evt) => {
-      console.log(`node2 received: ${uint8ArrayToString(evt.detail.data)} on topic ${evt.detail.topic}`)
-    })
-    await node2.services.pubsub.subscribe(`${TOPIC}`)
-    
-
     if (input.trim()) {
       try {
-
-        await node2.services.pubsub.publish(TOPIC, uint8ArrayFromString(input))
+        await node.services.pubsub.publish(TOPIC, uint8ArrayFromString(input))
         console.log(`Message sent: "${input}"`)
       } catch (err) {
         if (err.message.includes('NoPeersSubscribedToTopic')) {
