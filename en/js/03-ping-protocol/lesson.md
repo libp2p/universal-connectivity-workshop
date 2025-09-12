@@ -48,9 +48,19 @@ import { identify } from '@libp2p/identify'
 import { multiaddr } from '@multiformats/multiaddr'
 import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 
-const relayAddr = process.argv[2];
-const remoteAddrs = relayAddr ? [multiaddr(relayAddr)] : [];
+// Parse the remote peer addresses from the environment variable
+    async function main(){
+      console.log("Starting Universal Connectivity application...");
 
+    let remoteAddrs = []
+    if (process.env.REMOTE_PEERS) {
+        remoteAddrs = process.env.REMOTE_PEERS
+            .split(',')                     // Split the string at ','
+            .map(addr => addr.trim())       // Trim whitespace of each string
+            .filter(addr => addr !== '')    // Filter out empty strings
+            .map(addr => multiaddr(addr))   // Parse each string into Multiaddr
+    }
+    }
 ```
 
 ### Step 2: Configure Ping in the Node Creation
@@ -160,6 +170,7 @@ In your event handling section, add listeners for ping events alongside your exi
 
   // Keep the process alive
   process.stdin.resume();
+};
 
 main().catch((error) => {
   console.error('Error:', error);
@@ -186,9 +197,14 @@ import { createEd25519PeerId } from '@libp2p/peer-id-factory';
 async function main() {
   console.log("Starting Universal Connectivity application...");
 
-  const relayAddr = process.argv[2];
-  const remoteAddrs = relayAddr ? [multiaddr(relayAddr)] : [];
-
+  // Parse the remote peer addresses from the environment variable
+  let remoteAddrs = [];
+  if (process.env.REMOTE_PEERS) {
+    remoteAddrs = process.env.REMOTE_PEERS.split(",") // Split the string at ','
+      .map((addr) => addr.trim()) // Trim whitespace of each string
+      .filter((addr) => addr !== "") // Filter out empty strings
+      .map((addr) => multiaddr(addr)); // Parse each string into Multiaddr
+  }
 
   // Create the libp2p node with configured ping service
 

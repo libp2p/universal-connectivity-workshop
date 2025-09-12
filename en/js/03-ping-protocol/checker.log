@@ -1,7 +1,7 @@
-
-✅ Ping Protocol validation passed
-✅ Lesson node: PASS
-✅ Checker connection: PASS
-✅ Ping protocol: PASS
-Completed at: 2025-08-26T20:23:23.195Z
-
+Connection opened:
+   Remote peer : 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+   Local addr  : /ip4/127.0.0.1/tcp/38527/p2p/12D3KooWMBaGnf5ggeev9Mu1siELsBwrMdTes3hDpNhbbwxCfbjv
+   Remote addr : /ip4/127.0.0.1/tcp/55814/p2p/12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+   • Ping RTT    : 20 ms
+Peer disconnected: 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j
+Connection closed: 12D3KooWEnwZoS2Jw3aaXPXNcFm6RWzZcdi6dUbA4brP34en5K3j

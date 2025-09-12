@@ -1,16 +1,17 @@
-FROM node:22.9.0-alpine AS builder
-
+FROM node:20-alpine as build
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm install
-
 COPY . .
 
-FROM node:22.9.0-alpine
-
+FROM node:20-alpine
 WORKDIR /app
+COPY --from=build /app /app
 
-COPY --from=builder /app /app
+# Set environment variables for timeout and log file
+ARG TIMEOUT_DURATION=10s
+ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
+ARG LOG_FILE=/app/stdout.log
+ENV LOG_FILE=${LOG_FILE}
 
-CMD ["/bin/sh", "-c", "node generate_peer_id.js && node relay.js > /app/relay.log 2>&1 & sleep 2 && cat /app/relay.log && tail -f /dev/null"] 
+CMD ["node", "relay.js"] 

@@ -1,40 +1,8 @@
+version: '3.8'
 services:
-  lesson:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    stop_grace_period: 1m
+  app:
+    build: ./app
     environment:
-      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
-      - REMOTE_ADDR=${REMOTE_ADDR:-/ip4/172.16.16.17/tcp/9092}
+      - TIMEOUT_DURATION=10s
     volumes:
-      - ./stdout.log:/app/stdout.log
-    networks:
-      workshop-net:
-        ipv4_address: 172.16.16.16
-
-  checker:
-    build:
-      context: .
-      dockerfile: ./checker/Dockerfile
-    container_name: ucw-checker-03-ping-protocol-js
-    depends_on:
-      - lesson
-    stop_grace_period: 1m
-    environment:
-      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
-    volumes:
-      - ./checker.log:/app/checker.log
-      - ./stdout.log:/app/stdout.log
-    networks:
-      workshop-net:
-        ipv4_address: 172.16.16.17
-
-networks:
-  workshop-net:
-    name: workshop-net
-    external: false
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.16.16.0/24
+      - ./app/stdout.log:/app/stdout.log

@@ -1,40 +1,17 @@
+version: '3.8'
 services:
-  lesson:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    container_name: ucw-lesson-04-circuit-relay-v2-js
-    stop_grace_period: 1m
-    volumes:
-      - ./relay.log:/app/relay.log
-    networks:
-      workshop-net:
-        ipv4_address: 172.16.16.16
-
-  checker:
-    build:
-      context: .
-      dockerfile: ./checker/Dockerfile
-    container_name: ucw-checker-04-circuit-relay-v2-js
-    depends_on:
-      - lesson
-    stop_grace_period: 1m
-    environment:
-      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
-    volumes:
-      - ./checker.log:/app/checker.log
-      - ./relay.log:/app/relay.log
-      - ./listener.log:/app/listener.log
-      - ./dialer.log:/app/dialer.log
-    networks:
-      workshop-net:
-        ipv4_address: 172.16.16.17
-
-networks:
-  workshop-net:
-    name: workshop-net
-    external: false
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.16.16.0/24 
+  relay:
+    build: ./app
+    command: node relay.js
+    stdin_open: true
+    tty: true
+  listener:
+    build: ./app
+    command: node listener.js
+    stdin_open: true
+    tty: true
+  dialer:
+    build: ./app
+    command: node dialer.js
+    stdin_open: true
+    tty: true 

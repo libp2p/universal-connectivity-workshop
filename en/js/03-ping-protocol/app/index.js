@@ -10,10 +10,19 @@ import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 async function main() {
   console.log("Starting Universal Connectivity application...");
 
-  const relayAddr = process.argv[2];
-  const remoteAddrs = relayAddr ? [multiaddr(relayAddr)] : [];
+  // Parse the remote peer addresses from the environment variable
+  let remoteAddrs = [];
+  if (process.env.REMOTE_PEERS) {
+    remoteAddrs = process.env.REMOTE_PEERS.split(",") // Split the string at ','
+      .map((addr) => addr.trim()) // Trim whitespace of each string
+      .filter((addr) => addr !== "") // Filter out empty strings
+      .map((addr) => multiaddr(addr)); // Parse each string into Multiaddr
+  }
+
+  // Create the libp2p node with configured ping service
 
   const peerId = await createEd25519PeerId();
+
   const node = await createLibp2p({
     peerId,
     addresses: {
@@ -25,8 +34,8 @@ async function main() {
     services: {
       ping: ping({
         protocolPrefix: "ipfs",
-        pingInterval: 1000, 
-        timeout: 5000,
+        pingInterval: 1000, // 1 second interval
+        timeout: 5000, // 5 second timeout
       }),
       identify: identify(),
     },
