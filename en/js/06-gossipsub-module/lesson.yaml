@@ -12,7 +12,7 @@ objectives:
   - Handle pub/sub events and message broadcasting
 validation:
   method: output
-  success_regex: 'Subscribed to topic: universal-connectivity'
-  failure_message: 'Output must include successful subscription to the universal-connectivity topic.'
+  success_regex: '\[NODE[12]\] Started with Peer ID:|\[NODE[12]\] Successfully connected|\[NODE[12]\] Received message from'
+  failure_message: 'GossipSub must demonstrate coordinated multi-peer messaging with both NODE1 and NODE2 activities.'
   emoji_success: '+'
   emoji_failure: 'X'

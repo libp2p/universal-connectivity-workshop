@@ -3,31 +3,15 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    stop_grace_period: 30s
+    stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
     volumes:
-      - ./stdout.log:/workspace/stdout.log
+      - .:/workspace
     networks:
       workshop-net:
         ipv4_address: 172.16.16.16
-    command: ["sh", "-c", "node index.js > /workspace/stdout.log 2>&1"]
-
-  checker:
-    build:
-      context: ./checker
-      dockerfile: Dockerfile
-    depends_on:
-      - lesson
-    environment:
-      - LESSON_PATH=${LESSON_PATH}
-    volumes:
-      - ./checker.log:/workspace/checker.log
-      - ./stdout.log:/workspace/stdout.log:ro
-    networks:
-      workshop-net:
-        ipv4_address: 172.16.16.17
-    command: ["sh", "-c", "echo 'Checker Node.js app running (placeholder)' > /workspace/checker.log"]
+    command: ["sh", "-c", "cd /app && node index.js > /workspace/stdout.log 2>&1"]
 
 networks:
   workshop-net:
