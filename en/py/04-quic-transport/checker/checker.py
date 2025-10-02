@@ -1,87 +1,185 @@
-import logging
-from libp2p import generate_new_rsa_identity, new_host
-from libp2p.custom_types import TProtocol
-from libp2p.transport.quic import QuicTransport
-from libp2p.transport.tcp import TcpTransport
-from libp2p.network.stream.net_stream import INetStream
-from libp2p.peer.peerinfo import info_from_p2p_addr
-from libp2p.security.noise.transport import Transport as NoiseTransport
-from libp2p.stream_muxer.yamux.yamux import Yamux, PROTOCOL_ID as YAMUX_PROTOCOL_ID
-import multiaddr
+#!/usr/bin/env python3
+"""
+Check script for Lesson 4: QUIC Transport
+Validates that the student's solution can connect with QUIC and ping remote peers.
+"""
 import os
-import trio
-from cryptography.hazmat.primitives.asymmetric import x25519
+import re
+import sys
+import time
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("/app/checker.log", mode="w", encoding="utf-8"),
-    ],
-)
+def validate_peer_id(peer_id_str):
+    """Validate that the peer ID string is a valid libp2p PeerId format"""
+    if not peer_id_str.startswith("12D3KooW"):
+        return False, f"Invalid peer ID format. Expected to start with '12D3KooW', got: {peer_id_str}"
+    if len(peer_id_str) < 45 or len(peer_id_str) > 60:
+        return False, f"Peer ID length seems invalid. Expected 45-60 chars, got {len(peer_id_str)}: {peer_id_str}"
+    valid_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    for char in peer_id_str:
+        if char not in valid_chars:
+            return False, f"Invalid character '{char}' in peer ID. Must be base58 encoded."
+    return True, peer_id_str
 
-PING_PROTOCOL_ID = TProtocol("/ipfs/ping/1.0.0")
-PING_LENGTH = 32
+def validate_multiaddr(addr_str):
+    """Validate that the address string looks like a valid multiaddr"""
+    if not (addr_str.startswith("/ip4/") or addr_str.startswith("/ip6/")):
+        return False, f"Invalid multiaddr format: {addr_str}"
+    if "/quic-v1" not in addr_str:
+        return False, f"Missing QUIC transport in multiaddr (expected /quic-v1): {addr_str}"
+    if "/udp/" not in addr_str:
+        return False, f"Missing UDP transport in multiaddr: {addr_str}"
+    return True, addr_str
 
-async def handle_ping(stream: INetStream) -> None:
-    """Handle incoming ping requests."""
-    peer_id = stream.muxed_conn.peer_id
-    logging.info(f"incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1")
+def check_output():
+    """Check the output log for expected QUIC transport functionality"""
+    log_path = "checker.log"
+    
+    # Check if log file exists
+    if not os.path.exists(log_path):
+        print(f"✗ {log_path} file not found")
+        print(f"ℹ️  Expected log file at: {os.path.abspath(log_path)}")
+        return False
+    
     try:
-        data = await stream.read(PING_LENGTH)
-        if data:
-            logging.info(f"connected,{peer_id},/ip4/172.16.16.16/udp/41972/quic-v1")
-            start_time = time.time()
-            await stream.write(data)
-            rtt = (time.time() - start_time) * 1000
-            logging.info(f"ping,{peer_id},{rtt:.0f} ms")
+        with open(log_path, "r") as f:
+            output = f.read()
+        
+        if not output.strip():
+            print(f"✗ {log_path} is empty - application may have failed to start")
+            return False
+
+        print(f"ℹ️  Log file contents ({len(output)} bytes):")
+        print("-" * 60)
+        print(output[:500])  # Print first 500 chars for debugging
+        if len(output) > 500:
+            print("... (truncated)")
+        print("-" * 60)
+
+        # Check for incoming dial
+        incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
+        incoming_matches = re.search(incoming_pattern, output)
+        if not incoming_matches:
+            print("✗ No incoming dial received")
+            print("ℹ️  Expected pattern: incoming,<target_addr>,<from_addr>")
+            return False
+        
+        target_addr = incoming_matches.group(1)
+        from_addr = incoming_matches.group(2)
+        
+        valid, t_message = validate_multiaddr(target_addr)
+        if not valid:
+            print(f"✗ Invalid target address: {t_message}")
+            return False
+        
+        valid, f_message = validate_multiaddr(from_addr)
+        if not valid:
+            print(f"✗ Invalid from address: {f_message}")
+            return False
+        
+        print(f"✓ Incoming dial detected: {f_message} → {t_message}")
+
+        # Check for connection establishment
+        connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
+        connected_matches = re.search(connected_pattern, output)
+        if not connected_matches:
+            print("✗ No connection established")
+            print("ℹ️  Expected pattern: connected,<peer_id>,<addr>")
+            return False
+        
+        peer_id = connected_matches.group(1)
+        conn_addr = connected_matches.group(2)
+        
+        valid, peer_message = validate_peer_id(peer_id)
+        if not valid:
+            print(f"✗ {peer_message}")
+            return False
+        
+        valid, addr_message = validate_multiaddr(conn_addr)
+        if not valid:
+            print(f"✗ {addr_message}")
+            return False
+        
+        print(f"✓ Connection established with peer {peer_message}")
+        print(f"  Address: {addr_message}")
+
+        # Check for ping
+        ping_pattern = r"ping,(12D3KooW[A-Za-z0-9]+),(\d+\.?\d*)\s*ms"
+        ping_matches = re.search(ping_pattern, output)
+        if not ping_matches:
+            print("✗ No ping received")
+            print("ℹ️  Expected pattern: ping,<peer_id>,<rtt> ms")
+            return False
+        
+        ping_peer_id = ping_matches.group(1)
+        rtt = ping_matches.group(2)
+        
+        valid, peer_message = validate_peer_id(ping_peer_id)
+        if not valid:
+            print(f"✗ {peer_message}")
+            return False
+        
+        print(f"✓ Ping received from {peer_message}")
+        print(f"  RTT: {rtt} ms")
+
+        # Check for connection closure
+        closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
+        closed_matches = re.search(closed_pattern, output)
+        if not closed_matches:
+            print("✗ Connection closure not detected")
+            print("ℹ️  Expected pattern: closed,<peer_id>")
+            return False
+        
+        closed_peer_id = closed_matches.group(1)
+        valid, peer_message = validate_peer_id(closed_peer_id)
+        if not valid:
+            print(f"✗ {peer_message}")
+            return False
+        
+        print(f"✓ Connection {peer_message} closed gracefully")
+
+        return True
+        
     except Exception as e:
-        logging.error(f"error,{e}")
-    finally:
-        await stream.close()
-        logging.info(f"closed,{peer_id}")
+        print(f"✗ Error reading {log_path}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
-def create_noise_keypair():
-    """Create a Noise protocol keypair."""
-    x25519_private_key = x25519.X25519PrivateKey.generate()
-    class NoisePrivateKey:
-        def __init__(self, key):
-            self._key = key
-        def to_bytes(self):
-            return self._key.private_bytes_raw()
-        def public_key(self):
-            return NoisePublicKey(self._key.public_key())
-        def get_public_key(self):
-            return NoisePublicKey(self._key.public_key())
-    class NoisePublicKey:
-        def __init__(self, key):
-            self._key = key
-        def to_bytes(self):
-            return self._key.public_bytes_raw()
-    return NoisePrivateKey(x25519_private_key)
-
-async def main() -> None:
-    """Checker for QUIC transport."""
-    key_pair = generate_new_rsa_identity()
-    noise_privkey = create_noise_keypair()
-    noise_transport = NoiseTransport(key_pair, noise_privkey=noise_privkey)
-    sec_opt = {TProtocol("/noise"): noise_transport}
-    muxer_opt = {TProtocol(YAMUX_PROTOCOL_ID): Yamux}
-    transports = [TcpTransport(), QuicTransport()]
-
-    listen_addr = multiaddr.Multiaddr("/ip4/0.0.0.0/udp/9091/quic-v1")
-    host = new_host(
-        key_pair=key_pair,
-        transports=transports,
-        sec_opt=sec_opt,
-        muxer_opt=muxer_opt,
-    )
-
-    async with host.run(listen_addrs=[listen_addr]):
-        host.set_stream_handler(PING_PROTOCOL_ID, handle_ping)
-        await trio.sleep_forever()
+def main():
+    """Main check function"""
+    print("=" * 60)
+    print("QUIC Transport Checker - Lesson 4")
+    print("=" * 60)
+    
+    try:
+        if not check_output():
+            print("\n" + "=" * 60)
+            print("❌ QUIC Transport check FAILED")
+            print("=" * 60)
+            print("\nTroubleshooting tips:")
+            print("1. Ensure checker.log is being generated")
+            print("2. Check that QUIC transport is properly configured")
+            print("3. Verify peer connection was established")
+            print("4. Confirm ping protocol is working")
+            return False
+        
+        print("\n" + "=" * 60)
+        print("✅ QUIC Transport completed successfully! 🎉")
+        print("=" * 60)
+        print("\nYou have successfully:")
+        print("  • Configured QUIC transport")
+        print("  • Established bidirectional connectivity")
+        print("  • Measured round-trip times between peers")
+        print("  • Gracefully closed connections")
+        print("\n🎓 Ready for Lesson 5: Identify Checkpoint!")
+        return True
+        
+    except Exception as e:
+        print(f"\n✗ Unexpected error during checking: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
-    trio.run(main)
+    success = main()
+    sys.exit(0 if success else 1)
