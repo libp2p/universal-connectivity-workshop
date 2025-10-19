@@ -1,0 +1,8 @@
+# Generated log files
+*.log
+
+# Node modules
+node_modules/
+
+# Temporary files
+*.tmp
