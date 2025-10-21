@@ -1,0 +1,31 @@
+{
+  "name": "lesson-08-final-checkpoint",
+  "version": "1.0.0",
+  "description": "Lesson 8: Final Checkpoint - Complete js-peer Universal Connectivity with Chat messaging functionality",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "demo": "node demo-two-nodes.js",
+    "chat": "node chat-node.js",
+    "test": "node test-gossipsub.js"
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-gossipsub": "^14.1.2",
+    "@chainsafe/libp2p-noise": "^17.0.0",
+    "@chainsafe/libp2p-yamux": "^8.0.1",
+    "@libp2p/floodsub": "^10.1.46",
+    "@libp2p/identify": "^4.0.5",
+    "@libp2p/kad-dht": "^16.0.5",
+    "@libp2p/mdns": "^12.0.6",
+    "@libp2p/peer-id-factory": "^4.2.4",
+    "@libp2p/ping": "^3.0.5",
+    "@libp2p/tcp": "^11.0.5",
+    "@libp2p/websockets": "^10.0.6",
+    "@multiformats/multiaddr": "^13.0.1",
+    "it-pipe": "^3.0.1",
+    "libp2p": "^3.0.6",
+    "multiformats": "^13.4.1",
+    "uint8arrays": "^5.1.0"
+  }
+}
