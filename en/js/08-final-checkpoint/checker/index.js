@@ -9,7 +9,7 @@ import { createLibp2p } from 'libp2p'
 import { tcp } from '@libp2p/tcp'
 import { noise } from '@chainsafe/libp2p-noise'
 import { yamux } from '@chainsafe/libp2p-yamux'
-import { gossipsub } from '@chainsafe/libp2p-gossipsub'
+import { gossipsub } from '@libp2p/gossipsub'
 import { kadDHT } from '@libp2p/kad-dht'
 import { identify } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
@@ -17,6 +17,7 @@ import { createEd25519PeerId } from '@libp2p/peer-id-factory'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { createChatMessage, decodeMessage, isChatMessage, getChatMessageText, isFileMessage, getFileMessageDetails } from './proto-messages.js'
 import { mdns } from '@libp2p/mdns'
+import { ChatRoom } from './chatroom.js'
 
 // Universal Connectivity Protocol Topics
 const CHAT_TOPIC = 'universal-connectivity'
@@ -34,7 +35,7 @@ async function createCheckerNode() {
     peerId,
     addresses: {
       listen: [
-        '/ip4/0.0.0.0/tcp/0'
+        '/ip4/0.0.0.0/tcp/9091'
       ]
     },
     transports: [
@@ -183,6 +184,31 @@ function setupGossipsub(node) {
   })
 }
 
+// helper: wait for identify that advertises gossipsub (or timeout)
+function waitForPeerWithPubsub(node, timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      node.removeEventListener('peer:identify', onIdentify)
+      resolve(false) // timed out
+    }, timeoutMs)
+
+    function onIdentify(evt) {
+      const peerId = evt.detail.peerId.toString()
+      const protocols = evt.detail.protocols || []
+      const hasGossipsub = protocols.some(p => p.includes('gossipsub'))
+      console.log(`[IDENTIFY] Peer ${peerId.slice(-8)} supports:`, protocols)
+      if (hasGossipsub) {
+        clearTimeout(timer)
+        node.removeEventListener('peer:identify', onIdentify)
+        resolve(true)
+      }
+      // otherwise keep waiting until timeout
+    }
+
+    node.addEventListener('peer:identify', onIdentify)
+  })
+}
+
 
 async function sendWelcomeMessage(node) {
   try {
@@ -242,45 +268,136 @@ async function main() {
     setupEventHandlers(node)
     setupGossipsub(node)
 
-    await new Promise(resolve => setTimeout(resolve, 10000))
+    // Initialize ChatRoom for interactive functionality
+    console.log('\n[CHAT] Initializing checker chat room...')
+    const chatRoom = await ChatRoom.join(node, 'Checker')
 
-    let welcomeSent = false
-    node.addEventListener('peer:connect', async () => {
-      if (!welcomeSent) {
-        await new Promise(resolve => setTimeout(resolve, 12000))
-        await sendWelcomeMessage(node)
-        welcomeSent = true
-      }
+    // Wait for potential connections and mesh formation
+    console.log('[CHAT] Waiting for Identify protocol to exchange supported protocols...')
+    console.log('[CHAT] Waiting for Identify protocol(s) that advertise pubsub...')
+    const identified = await waitForPeerWithPubsub(node, 8000)
+    if (!identified) {
+      console.log('[CHAT] Warning: no peer advertised gossipsub within timeout. Continuing checks...')
+    } else {
+      console.log('[CHAT] At least one peer advertises gossipsub')
+    }
+
+    // Check Gossipsub status
+    console.log('[CHAT] Checking Gossipsub status...')
+
+    // Get connected peers
+    const connections = node.getConnections()
+    console.log(`[DEBUG] Connected to ${connections.length} peer(s):`)
+    connections.forEach(conn => {
+      console.log(`[DEBUG]   - ${conn.remotePeer.toString().slice(-8)}`)
     })
 
-    setInterval(async () => {
-      const connections = node.getConnections()
-      if (connections.length > 0) {
-        await pingPeers(node)
-      }
-    }, 5000)
+    // Check who's subscribed locally
+    const localTopics = node.services.pubsub.getTopics()
+    console.log(`[DEBUG] Local subscriptions: ${localTopics.join(', ')}`)
 
-    process.on('SIGTERM', async () => {
-      console.log('Received SIGTERM - shutting down gracefully...')
-      await node.stop()
-      console.log('Checker stopped successfully')
-      process.exit(0)
+    // Try to get peers for each topic
+    localTopics.forEach(topic => {
+      const topicPeers = node.services.pubsub.getSubscribers(topic)
+      console.log(`[DEBUG] Topic "${topic}": ${topicPeers.length} peer(s)`)
     })
 
-    const timeout = process.env.TIMEOUT_DURATION || '60'
-    const timeoutMs = parseInt(timeout) * 1000
-    
-    console.log(`Checker will run for ${timeout}s`)
-    
-    await new Promise(resolve => setTimeout(resolve, timeoutMs))
-    
-    console.log('Timeout reached - shutting down')
-    await node.stop()
-    console.log('Checker stopped successfully')
-    process.exit(0)
+    // Manual check every second for 10 seconds
+    console.log('[CHAT] Waiting up to 10 seconds for mesh to form...')
+
+    let meshFormed = false
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      const subscribers = node.services.pubsub.getSubscribers('universal-connectivity')
+      console.log(`[CHAT] Check ${i + 1}/10: ${subscribers.length} peer(s) in mesh`)
+
+      if (subscribers.length > 0) {
+        console.log(`[CHAT] ✅ Mesh formed with ${subscribers.length} peer(s)!`)
+        meshFormed = true
+        break
+      }
+    }
+
+    // Verify mesh formation and provide clear feedback
+    const subscribers = node.services.pubsub.getSubscribers('universal-connectivity')
+
+    if (subscribers.length > 0) {
+      console.log(`\n${'='.repeat(60)}`)
+      console.log('✅ GOSSIPSUB MESH SUCCESSFULLY FORMED!')
+      console.log('='.repeat(60))
+      console.log(`[CHAT] Connected to ${subscribers.length} peer(s) in mesh:`)
+      subscribers.forEach(peer => {
+        console.log(`[CHAT]   ✓ ${peer.toString()}`)
+      })
+      console.log('='.repeat(60))
+      console.log('✅ READY TO CHAT!\n')
+    } else {
+      console.log(`\n${'='.repeat(60)}`)
+      console.log('⚠️  NO MESH PEERS FOUND')
+      console.log('='.repeat(60))
+      console.log('[CHAT] Running in standalone mode')
+      console.log('[CHAT] Students can connect to this checker and join the chat!')
+      console.log('[CHAT] Copy the listening address above and dial from your app')
+      console.log('='.repeat(60) + '\n')
+    }
+
+    // Send introduction message
+    try {
+      await chatRoom.sendIntroduction()
+    } catch (error) {
+      // Silent fail - normal for standalone mode
+    }
+
+    // Check if interactive mode is enabled
+    const isInteractive = process.env.INTERACTIVE !== 'false' && process.stdin.isTTY
+
+    if (isInteractive) {
+      // Start interactive chat
+      await chatRoom.startInteractive()
+    } else {
+      console.log('[SYSTEM] Running in non-interactive mode')
+      console.log('[SYSTEM] Listening for messages...')
+
+      // Set up message handler
+      chatRoom.onMessage((msg) => {
+        console.log(msg.toString())
+      })
+
+      // Send periodic heartbeat messages
+      const heartbeatInterval = setInterval(async () => {
+        try {
+          const peerCount = chatRoom.getPeerCount()
+          await chatRoom.publishMessage(`Heartbeat - ${peerCount} peer(s) connected`)
+        } catch (error) {
+          console.error('[HEARTBEAT] Error:', error.message)
+        }
+      }, 30000) // Every 30 seconds
+
+      // Keep the process running
+      process.on('SIGTERM', async () => {
+        console.log('\n[SYSTEM] Received SIGTERM - shutting down gracefully...')
+        clearInterval(heartbeatInterval)
+        await node.stop()
+        process.exit(0)
+      })
+
+      // For Docker environments, wait for a timeout
+      const timeoutDuration = process.env.TIMEOUT_DURATION || '60s'
+      const timeoutMs = parseInt(timeoutDuration) * 1000 || 60000
+
+      console.log(`[SYSTEM] Will run for ${timeoutDuration} then exit`)
+      setTimeout(async () => {
+        console.log('[SYSTEM] Timeout reached - shutting down')
+        clearInterval(heartbeatInterval)
+        await node.stop()
+        console.log('[SYSTEM] Node stopped successfully')
+        process.exit(0)
+      }, timeoutMs)
+    }
 
   } catch (error) {
-    console.error('Fatal error:', error)
+    console.error('[ERROR] Fatal error:', error)
     process.exit(1)
   }
 }

@@ -15,9 +15,83 @@ A production-ready decentralized chat application featuring:
 - ✅ **Kademlia DHT** - Decentralized peer discovery
 - ✅ **Chat Interface** - Interactive messaging system
 
+### 🎯 **Interactive Checker - The Ultimate Test!**
+
+This lesson includes a **live checker server** that learners can connect to and chat with!
+
+#### What is the Checker?
+
+The checker is a **fully functional libp2p node** that:
+- ✅ Runs all the same protocols as your app (TCP, Ping, Identify, Gossipsub, DHT)
+- ✅ Acts as a chat server you can connect to
+- ✅ Responds to your messages with heartbeat messages
+- ✅ Validates that your implementation works correctly
+- ✅ Provides a real interactive chat experience
+
+#### How to Use the Checker
+
+1. **Start the checker**: `docker-compose up -d checker`
+2. **Get its address**: `docker-compose logs checker | grep "Listening on"`
+3. **Connect your app**: `node index.js /ip4/127.0.0.1/tcp/9091/p2p/CHECKER_PEER_ID`
+4. **Start chatting**: Type messages and see the checker respond!
+
+This gives you a **real peer-to-peer chat experience** with a live server!
+
 ## Quick Start
 
-### Option 1: Automated Demo (Single Terminal) ⭐ RECOMMENDED
+### 🎯 **Option 1: Interactive Chat with Checker (RECOMMENDED)**
+
+The **most exciting way** to test your implementation! Connect to a live checker server and have a real chat conversation.
+
+#### Step 1: Start the Checker Server
+```bash
+# From the lesson directory (one level up from app/)
+docker-compose up -d checker
+```
+
+#### Step 2: Get the Checker Address
+```bash
+# Check the checker logs to get the listening address
+docker-compose logs checker | grep "Listening on"
+```
+
+You'll see output like:
+```
+Listening on 2 address(es)
+  /ip4/127.0.0.1/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+  /ip4/172.18.0.2/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+```
+
+**Copy the local address** (the one starting with `/ip4/127.0.0.1/tcp/9091/...`)
+
+#### Step 3: Connect Your App to the Checker
+```bash
+cd app
+npm install
+# Use the checker address you copied
+node index.js /ip4/127.0.0.1/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+```
+
+#### Step 4: Start Chatting! 💬
+Once connected, you'll see:
+```
+✅ GOSSIPSUB MESH SUCCESSFULLY FORMED!
+✅ READY TO CHAT!
+
+[YourNickname]> 
+```
+
+**Type messages and press Enter to chat with the checker!**
+
+The checker will respond with heartbeat messages and you can have a real conversation!
+
+#### Step 5: Clean Up
+```bash
+# Stop the checker when done
+docker-compose down
+```
+
+### Option 2: Automated Demo (Single Terminal)
 
 The easiest way to test the complete functionality:
 
@@ -37,10 +111,8 @@ This will:
 
 **No manual multiaddr copying needed!**
 
-### Option 2: Interactive Testing (Two Terminals)
+### Option 3: Interactive Testing (Two Terminals)
 
-
-Gossipsub/mesh formation requires: (A) nodes connected at transport level, (B) Identify exchanged so each knows which protocols the other supports, (C) both peers subscribed to the same topic and that subscription being propagated. Your code attempts to follow this order, but it uses fixed sleeps and doesn’t await subscribe calls, which lets race conditions win and gives you the “0 peers in mesh” output even though connections and identify succeeded. The README also recommends using the automated demo which avoids these races — hint taken.
 
 For interactive chat between two peers:
 
@@ -57,6 +129,8 @@ cd app
 # Copy multiaddr from Terminal 1 output
 node index.js /ip4/127.0.0.1/tcp/PORT/p2p/PEER_ID
 ```
+
+- **🚀 ChatRoom is ready and both nodes are successfuly connected to each other. Congrats!! 🚀**
 
 ### Docker Testing
 

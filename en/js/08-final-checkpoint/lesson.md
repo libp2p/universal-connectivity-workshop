@@ -134,6 +134,28 @@ services: {
 }
 ```
 
+## 🎯 **Interactive Checker - The Ultimate Test!**
+
+This lesson includes a **live checker server** that learners can connect to and chat with!
+
+### What is the Checker?
+
+The checker is a **fully functional libp2p node** that:
+- ✅ Runs all the same protocols as your app (TCP, Ping, Identify, Gossipsub, DHT)
+- ✅ Acts as a chat server you can connect to
+- ✅ Responds to your messages with heartbeat messages
+- ✅ Validates that your implementation works correctly
+- ✅ Provides a real interactive chat experience
+
+### How to Use the Checker
+
+1. **Start the checker**: `docker-compose up -d checker`
+2. **Get its address**: `docker-compose logs checker | grep "Listening on"`
+3. **Connect your app**: `node index.js /ip4/127.0.0.1/tcp/9091/p2p/CHECKER_PEER_ID`
+4. **Start chatting**: Type messages and see the checker respond!
+
+This gives you a **real peer-to-peer chat experience** with a live server!
+
 ## Your Challenge
 
 Implement (or review) the complete application that:
@@ -143,6 +165,7 @@ Implement (or review) the complete application that:
 3. **Handles Connections**: Connect to remote peers and manage connection lifecycle
 4. **Implements Messaging**: Send and receive chat messages via Gossipsub
 5. **Provides User Feedback**: Print meaningful status messages for all events
+6. **Connects to Checker**: Successfully dial into the checker and join the chat room
 
 ### Requirements Checklist
 
@@ -159,7 +182,59 @@ Your implementation must:
 
 ## Testing Your Implementation
 
-### Option 1: Local Testing (Two Terminals Required)
+### 🎯 **Option 1: Interactive Chat with Checker (RECOMMENDED)**
+
+Here, You'll connect to a live checker that acts as a chat server.
+
+#### Step 1: Start the Checker Server
+```bash
+# From the lesson directory
+docker-compose up -d checker
+```
+
+#### Step 2: Get the Checker Address
+```bash
+# Check the checker logs to get the listening address
+docker-compose logs checker | grep "Listening on"
+```
+
+You'll see output like:
+```
+Listening on 2 address(es)
+  /ip4/127.0.0.1/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+  /ip4/172.18.0.2/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+```
+
+**Copy the local address** (the one starting with `/ip4/127.0.0.1/tcp/9091/...`)
+
+#### Step 3: Connect Your App to the Checker
+```bash
+cd app
+npm install
+# Use the checker address you copied
+node index.js /ip4/127.0.0.1/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+```
+
+#### Step 4: Start Chatting! 💬
+Once connected, you'll see:
+```
+✅ GOSSIPSUB MESH SUCCESSFULLY FORMED!
+✅ READY TO CHAT!
+
+[YourNickname]> 
+```
+
+**Type messages and press Enter to chat with the checker!**
+
+The checker will respond with heartbeat messages and you can have a real conversation!
+
+#### Step 5: Clean Up
+```bash
+# Stop the checker when done
+docker-compose down
+```
+
+### Option 2: Local Testing (Two Terminals Required)
 
 This demonstrates real peer-to-peer communication between two nodes.
 
@@ -194,7 +269,7 @@ Now both peers should:
 
 You can then type messages in either terminal!
 
-### Option 2: Docker Testing
+### Option 3: Docker Testing
 
 **Run with Docker:**
 ```bash
@@ -347,6 +422,21 @@ node.services.pubsub.addEventListener('message', handler)
 **Cause**: Docker doesn't support interactive input by default  
 **Solution**: Use `docker-compose up` for validation, or run locally with `node index.js` for interactive chat
 
+### Issue: "Failed to connect to checker"
+**Cause**: Checker not running or wrong address  
+**Solution**: 
+- Ensure checker is running: `docker-compose ps`
+- Get correct address: `docker-compose logs checker | grep "Listening on"`
+- Use the `/ip4/127.0.0.1/tcp/9091/...` address (not the Docker internal one)
+
+### Issue: "No messages from checker"
+**Cause**: Gossipsub mesh not formed yet  
+**Solution**: Wait 5-10 seconds after connection. You should see "✅ GOSSIPSUB MESH SUCCESSFULLY FORMED!" when ready.
+
+### Issue: "Checker not responding to messages"
+**Cause**: Normal behavior - checker sends heartbeat messages every 30 seconds  
+**Solution**: The checker is working! It sends periodic "Heartbeat - X peer(s) connected" messages. Try sending a few messages and wait for the heartbeat.
+
 ## Advanced Challenges
 
 Want to go further? Try these extensions:
@@ -379,6 +469,8 @@ You've built a complete universal connectivity application that:
 ✅ **Manages peer discovery** without central servers  
 ✅ **Monitors connection health** automatically  
 ✅ **Provides production-ready architecture**  
+✅ **Connects to live checker server** for interactive testing  
+✅ **Enables real-time chat** with a live peer-to-peer server  
 
 ## What You've Accomplished
 

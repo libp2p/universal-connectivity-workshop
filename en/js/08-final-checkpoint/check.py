@@ -64,6 +64,22 @@ def check_checker_output():
         if re.search(r"Subscribed to topic.*universal-connectivity", output):
             print("+ Checker subscribed to topics")
         
+        # Check for ChatRoom initialization
+        if re.search(r"\[CHAT\].*Initializing checker chat room", output):
+            print("+ Checker chat room initialized")
+        
+        # Check for mesh formation capability
+        if re.search(r"\[CHAT\].*Waiting.*mesh to form|GOSSIPSUB MESH SUCCESSFULLY FORMED", output):
+            print("+ Checker has mesh formation capability")
+        
+        # Check for interactive mode setup
+        if re.search(r"\[SYSTEM\].*Running in.*mode|Ready to chat", output, re.IGNORECASE):
+            print("+ Checker interactive mode configured")
+        
+        # Check for port 9091 listening
+        if re.search(r"/ip4/.*tcp/9091", output):
+            print("+ Checker listening on port 9091 (accessible for dialing)")
+        
         return True
         
     except Exception as e:
@@ -218,9 +234,11 @@ def main():
         print("i - Implemented chat messaging functionality")
         print("i - Connected to and communicated with the checker peer")
         print("i - Built a production-ready Universal Connectivity application")
+        print("i - Created an interactive checker that students can dial and chat with!")
         print("")
         print("i 🎉 CONGRATULATIONS! You've completed the entire workshop!")
         print("i 🎉 You're now ready to build any peer-to-peer application with js-libp2p!")
+        print("i 🎉 Developers can now dial into the checker and join the chat room!")
 
         return True
 

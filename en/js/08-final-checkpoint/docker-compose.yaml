@@ -24,10 +24,13 @@ services:
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-60}
+      - INTERACTIVE=false
     volumes:
       - .:/workspace
     networks:
       workshop-net:
+    ports:
+      - "9091:9091"  # Expose checker port for students to dial
     command: ["sh", "-c", "node index.js > /workspace/checker.log 2>&1"]
 
 networks:
