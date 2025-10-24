@@ -1,0 +1,7 @@
+libp2p>=0.4.0
+trio>=0.20.0
+multiaddr>=0.0.9
+base58>=2.1.0
+janus>=2.0.0
+trio_asyncio>=0.15.0
+textual>=0.79.1
