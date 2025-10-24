@@ -361,7 +361,7 @@ loop {
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-06-gossipsub-checkpoint
+   docker rm -f workshop-lesson ucw-checker-en
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans

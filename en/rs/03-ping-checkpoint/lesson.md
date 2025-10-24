@@ -122,7 +122,7 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-03-ping-checkpoint
+   docker rm -f workshop-lesson ucw-checker-en
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans

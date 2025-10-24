@@ -52,7 +52,7 @@ use libp2p::{
     Multiaddr, SwarmBuilder,
     swarm::{NetworkBehaviour, SwarmEvent}
 };
-use std::{env, str::FromStr, time::Duration}
+use std::{env, str::FromStr, time::Duration};
 ```
 
 ### Step 3: Update Your NetworkBehaviour
@@ -177,7 +177,7 @@ loop {
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-05-identiy-checkpoint
+   docker rm -f workshop-lesson ucw-checker-en
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -212,7 +212,7 @@ use libp2p::{
     Multiaddr, SwarmBuilder,
     swarm::{NetworkBehaviour, SwarmEvent}
 };
-use std::{env, str::FromStr, time::Duration}
+use std::{env, str::FromStr, time::Duration};
 
 const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
 const AGENT_VERSION: &str = "universal-connectivity/0.1.0";

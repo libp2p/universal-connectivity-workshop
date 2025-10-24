@@ -3,6 +3,7 @@ services:
     build:
       context: ${PROJECT_ROOT}
       dockerfile: ${LESSON_PATH}/app/Dockerfile
+    container_name: workshop-lesson
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
@@ -14,16 +15,18 @@ services:
         ipv4_address: 172.16.16.16
 
   checker:
-    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-06-gossipsub-checkpoint
-    container_name: ucw-checker-06-gossipsub-checkpoint
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-en:latest
+    container_name: ucw-checker-en
     depends_on:
       - lesson
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
-      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1}
+      - LISTEN_ADDRS=${LISTEN_ADDRS:-/ip4/172.16.16.17/udp/9091/quic-v1}
+      - CLOSE_AFTER_GOSSIP_MSG=TRUE
     volumes:
       - ${PROJECT_ROOT}/${LESSON_PATH}/checker.log:/app/checker.log
+      - ${PROJECT_ROOT}/${LESSON_PATH}/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB.key:/app/key
     networks:
       workshop-net:
         ipv4_address: 172.16.16.17

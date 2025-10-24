@@ -119,7 +119,7 @@ Your existing event handling code will work for both TCP and QUIC connections. T
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-04-quic-transport
+   docker rm -f workshop-lesson ucw-checker-en
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -145,7 +145,7 @@ Your implementation should:
 
 QUIC multiaddresses use UDP instead of TCP and include the QUIC protocol after the port number.
 - TCP: `/ip4/127.0.0.1/tcp/9092`
-- QUIC: `/ip4/127.0.0.1/udp/9092/quic-v1`
+- QUIC: `/ip4/127.0.0.1/udp/9091/quic-v1`
 
 ## Hint - Complete Solution
 

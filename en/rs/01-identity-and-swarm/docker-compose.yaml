@@ -3,6 +3,7 @@ services:
     build:
       context: ${PROJECT_ROOT}
       dockerfile: ${LESSON_PATH}/app/Dockerfile
+    container_name: workshop-lesson
     stop_grace_period: 1m
     environment:
       - TIMEOUT_DURATION=${TIMEOUT_DURATION:-10s}
