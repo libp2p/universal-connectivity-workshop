@@ -3267,47 +3267,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
 
 [[package]]
-name = "ucw-checker-02-tcp-transport"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-03-ping-checkpoint"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-04-quic-transport"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-05-identify-checkpoint"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-06-gossipsub-checkpoint"
+name = "ucw-checker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -3315,29 +3275,6 @@ dependencies = [
  "libp2p",
  "prost",
  "prost-types",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-07-kademlia-checkpoint"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "prost",
- "prost-types",
- "tokio",
-]
-
-[[package]]
-name = "ucw-checker-08-final-checkpoint"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "futures",
- "libp2p",
- "prost",
  "tokio",
 ]
 

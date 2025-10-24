@@ -150,24 +150,6 @@ fn split_address(addr: Multiaddr) -> Option<(PeerId, Multiaddr)> {
 }
 ```
 
-Next, add code to split the bootstrap Multiaddr's and add them to the kademlia behaviour:
-
-```rust
-
-// ... existing code to create the kadmelia behaviour ...
-
-// Add the bootstrap peer addresses to the kademlia behaviour
-for addr in bootstrap_addrs.into_iter() {
-    if let Some((peer_id, peer_addr)) = split_address(addr) {
-        println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
-        kademlia.add_address(&peer_id, peer_addr);
-    }
-}
-
-// ... existing code to build the swarm ...
-
-```
-
 And add the kademlia behaviour into the SwarmBuilder code in your peer:
 
 ```rust
@@ -198,16 +180,30 @@ let mut swarm = SwarmBuilder::with_existing_identity(local_key)
 
 ### Step 7: Initiate Bootstrapping
 
-Then just after you dial the remote peers, add code to trigger the kademlia bootstrap process:
+Since you are joining a Kademlia network using one or more bootstrap peers, you no longer need to dial any peers directly. You may remove the code for dialing remote peers and instead add code to trigger the kademlia bootstrap process:
 
 ```rust
+// ~~~ snip ~~~
 // Dial all of the remote peer Multiaddrs
 for addr in remote_addrs.into_iter() {
     swarm.dial(addr)?;
 }
+// ~~~ snip ~~~
 
 // Start the Kademlia bootstrap process
-swarm.behaviour_mut().kademlia.bootstrap()?;
+if !bootstrap_addrs.is_empty() {
+    // Add the bootstrap peer addresses to the kademlia behaviour
+    for addr in bootstrap_addrs.into_iter() {
+        if let Some((peer_id, peer_addr)) = split_address(addr) {
+            println!("Adding bootstrap peer: {peer_id} with multiaddr: {peer_addr}");
+            swarm.behaviour_mut().kademlia.add_address(&peer_id, peer_addr);
+        }
+    }
+
+    // Start the Kademlia bootstrap process
+    swarm.behaviour_mut().kademlia.bootstrap()?;
+}
+
 ```
 
 ### Step 8: Handle Kademlia Events
@@ -363,7 +359,7 @@ loop {
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-07-kademlia-checkpoint
+   docker rm -f workshop-lesson ucw-checker-en ucw-checker-en-01 ucw-checker-en-02
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -470,7 +466,7 @@ fn create_test_message(peer_id: &PeerId) -> Result<(gossipsub::IdentTopic, Unive
     let topic = gossipsub::IdentTopic::new("universal-connectivity");
     let message = UniversalConnectivityMessage {
         from: peer_id.to_string(),
-        message: "Hello from {peer_id}!".to_string(),
+        message: format!("Hello from {peer_id}!"),
         timestamp: SystemTime::now()
             .duration_since(UNIX_EPOCH)?
             .as_secs() as i64,
@@ -503,9 +499,9 @@ async fn main() -> Result<()> {
     println!("Starting Universal Connectivity Application...");
 
     // parse the remote peer addresses from the environment variable
-    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
+    let mut _remote_addrs: Vec<Multiaddr> = Vec::default();
     if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
-        remote_addrs = remote_peers
+        _remote_addrs = remote_peers
             .split(',')                         // Split the string at ','
             .map(str::trim)                     // Trim whitespace of each string
             .filter(|s| !s.is_empty())          // Filter out empty strings
@@ -584,11 +580,6 @@ async fn main() -> Result<()> {
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
-
-    // Dial all of the remote peer Multiaddrs
-    for addr in remote_addrs.into_iter() {
-        swarm.dial(addr)?;
-    }
 
     if !bootstrap_addrs.is_empty() {
         // Add the bootstrap peer addresses to the kademlia behaviour

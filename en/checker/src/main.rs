@@ -1,23 +1,22 @@
 use anyhow::Result;
 use futures::StreamExt;
 use libp2p::{
+    core::transport::ListenerId,
     gossipsub, identify, identity, kad,
     multiaddr::Protocol,
-    ping,
-    swarm::{NetworkBehaviour, SwarmEvent},
+    noise, ping, tcp,
+    swarm::{NetworkBehaviour, SwarmEvent}, yamux,
     Multiaddr, PeerId, StreamProtocol, SwarmBuilder,
 };
 use prost::Message;
 use std::{
     collections::hash_map::DefaultHasher,
     env,
-    fmt::Write,
     hash::{Hash, Hasher},
     path::PathBuf,
     str::FromStr,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tokio::fs;
 
 const IDENTIFY_PROTOCOL_VERSION: &str = "/ipfs/id/1.0.0";
 const AGENT_VERSION: &str = "universal-connectivity/0.1.0";
@@ -29,6 +28,7 @@ const GOSSIPSUB_TOPICS: &[&str] = &[
 const KADEMLIA_PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/ipfs/kad/1.0.0");
 const KADEMLIA_QUERY_TIMEOUT: u64 = 10;
 const KADEMLIA_BOOTSTRAP_INTERVAL: u64 = 300;
+const TICK_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_secs(5);
 
 #[derive(Clone, PartialEq, prost::Message)]
 pub struct UniversalConnectivityMessage {
@@ -61,7 +61,7 @@ struct Behaviour {
 
 async fn read_identity() -> Result<identity::Keypair> {
     let key_path = PathBuf::from("/app/key");
-    let bytes = fs::read(&key_path).await?;
+    let bytes = tokio::fs::read(&key_path).await?;
     Ok(identity::Keypair::from_protobuf_encoding(&bytes)?)
 }
 
@@ -73,12 +73,13 @@ fn message_id(msg: &gossipsub::Message) -> gossipsub::MessageId {
 
 fn create_test_message(
     peer_id: &PeerId,
+    counter: usize,
 ) -> Result<(gossipsub::IdentTopic, UniversalConnectivityMessage)> {
     // Send a test message on the universal-connectivity topic
     let topic = gossipsub::IdentTopic::new("universal-connectivity");
     let message = UniversalConnectivityMessage {
         from: peer_id.to_string(),
-        message: "Hello from {peer_id}!".to_string(),
+        message: format!("Hello from {peer_id}! ({counter})"),
         timestamp: SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64,
         message_type: MessageType::Chat as i32,
     };
@@ -107,9 +108,9 @@ fn split_address(addr: Multiaddr) -> Option<(PeerId, Multiaddr)> {
 #[tokio::main]
 async fn main() -> Result<()> {
     // parse the remote peer addresses from the environment variable
-    let mut remote_addrs: Vec<Multiaddr> = Vec::default();
-    if let Ok(remote_peers) = env::var("REMOTE_PEERS") {
-        remote_addrs = remote_peers
+    let mut listen_on: Vec<Multiaddr> = Vec::default();
+    if let Ok(listen_addrs) = env::var("LISTEN_ADDRS") {
+        listen_on = listen_addrs
             .split(',') // Split the string at ','
             .map(str::trim) // Trim whitespace of each string
             .filter(|s| !s.is_empty()) // Filter out empty strings
@@ -128,6 +129,15 @@ async fn main() -> Result<()> {
             .collect::<Result<Vec<_>, _>>()?; // Collect into Result and unwrap it
     }
 
+    // parse environment flags
+    let close_after_connected: bool = env::var("CLOSE_AFTER_CONNECTED").is_ok();
+    let close_after_ping: bool = env::var("CLOSE_AFTER_PING").is_ok();
+    let close_after_identify: bool = env::var("CLOSE_AFTER_IDENTIFY").is_ok();
+    let close_after_gossip_msg: bool = env::var("CLOSE_AFTER_GOSSIP_MSG").is_ok();
+    let close_after_kademlia_bootstrap: bool = env::var("CLOSE_AFTER_KADEMLIA_BOOTSTRAP").is_ok();
+    let chatty: bool = env::var("CHATTY").is_ok();
+
+    // get our identity
     let local_key = read_identity().await?;
     let local_peer_id = local_key.public().to_peer_id();
 
@@ -167,6 +177,11 @@ async fn main() -> Result<()> {
 
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)
         .with_tokio()
+        .with_tcp(
+            tcp::Config::default(),
+            noise::Config::new,
+            yamux::Config::default,
+        )?
         .with_quic()
         .with_behaviour(|key| Behaviour {
             ping: ping::Behaviour::new(
@@ -184,9 +199,12 @@ async fn main() -> Result<()> {
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
-    // listen on all addresses
-    for addr in remote_addrs.into_iter() {
-        swarm.listen_on(addr)?;
+    // listen on all addresses, remember listener ids
+    let mut listeners: Vec<ListenerId> = Vec::with_capacity(listen_on.len());
+    for addr in listen_on.into_iter() {
+        if let Ok(listener_id) = swarm.listen_on(addr) {
+            listeners.push(listener_id);
+        }
     }
 
     if !bootstrap_addrs.is_empty() {
@@ -204,11 +222,24 @@ async fn main() -> Result<()> {
         swarm.behaviour_mut().kademlia.bootstrap()?;
     }
 
-    loop {
+    // set up ticking timer
+    let mut timer = tokio::time::interval(TICK_INTERVAL);
+    let mut counter = 0;
+
+    // hook into termination signals
+    let mut sig_term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+    let mut sig_quit = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::quit())?;
+
+    let mut shutdown = false;
+
+    'run: loop {
         tokio::select! {
-            Some(event) = swarm.next() => match event {
-                SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
+            event = swarm.select_next_some() => match event {
+                SwarmEvent::ConnectionEstablished { peer_id, connection_id, endpoint, .. } => {
                     println!("connected,{peer_id},{}", endpoint.get_remote_address());
+                    if close_after_connected {
+                        swarm.close_connection(connection_id);
+                    }
                 }
                 SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                     if let Some(error) = cause {
@@ -216,7 +247,10 @@ async fn main() -> Result<()> {
                     } else {
                         println!("closed,{peer_id}");
                     }
-                    return Ok(())
+                    if shutdown && swarm.network_info().num_peers() == 0 {
+                        println!("nomorepeers");
+                        break 'run Ok(());
+                    }
                 }
                 SwarmEvent::IncomingConnection { local_addr, send_back_addr, .. } => {
                     println!("incoming,{local_addr},{send_back_addr}");
@@ -225,20 +259,26 @@ async fn main() -> Result<()> {
                     println!("error,{error}");
                 }
                 SwarmEvent::Behaviour(behaviour_event) => match behaviour_event {
-                    BehaviourEvent::Ping(ping::Event { peer, result, .. }) => {
+                    BehaviourEvent::Ping(ping::Event { peer, connection, result}) => {
                         match result {
                             Ok(rtt) => {
                                 println!("ping,{peer},{} ms", rtt.as_millis());
+                                if close_after_ping {
+                                    swarm.close_connection(connection);
+                                }
                             }
-                            Err(failure) => {
-                                println!("error,{failure}");
+                            Err(error) => {
+                                println!("error,{error}");
                             }
                         }
                     }
                     BehaviourEvent::Identify(identify_event) => {
                         match identify_event {
-                            identify::Event::Received { peer_id, info, .. } => {
-                                println!("identify,{peer_id},{},{}", info.protocol_version, info.agent_version);
+                            identify::Event::Received { peer_id, connection_id, info, .. } => {
+                                println!("identify,{peer_id},{}", info.agent_version);
+                                if close_after_identify {
+                                    swarm.close_connection(connection_id);
+                                }
                             }
                             identify::Event::Error { error, .. } => {
                                 println!("error,{error}");
@@ -254,6 +294,12 @@ async fn main() -> Result<()> {
                                         msg.from,
                                         message.topic,
                                         msg.message);
+
+                                    if close_after_gossip_msg {
+                                        if let Ok(peer_id) = PeerId::from_str(&msg.from) {
+                                            let _ = swarm.disconnect_peer_id(peer_id);
+                                        }
+                                    }
                                 } else {
                                     println!("error,{}", message.topic);
                                 }
@@ -275,22 +321,23 @@ async fn main() -> Result<()> {
                                         num_remaining, ..
                                     })) => {
                                         if num_remaining == 0 {
-                                            println!("bootstrap");
+                                            println!("kademlia,bootstrap");
+                                            if close_after_kademlia_bootstrap {
+                                                break 'run Ok(());
+                                            }
                                         }
                                     }
                                     kad::QueryResult::Bootstrap(Err(kad::BootstrapError::Timeout { .. })) => {
                                         println!("error,bootstrap timed out");
                                     }
                                     kad::QueryResult::GetClosestPeers(Ok(kad::GetClosestPeersOk { peers, .. })) => {
-                                        let mut out = String::from("closestpeers,");
-                                        for (i, peer) in peers.iter().enumerate() {
-                                            if i > 0 {
-                                                out.push(',');
-                                            }
-                                            write!(&mut out, "{}", peer.peer_id)?;
+                                        println!("kademlia,closestpeers,{}", peers.len());
+                                        for peer in &peers {
+                                            let mut out = format!("closestpeer,{}", peer.peer_id);
                                             for addr in &peer.addrs {
-                                                write!(&mut out, "-{addr}")?;
+                                                out = format!("{out},{addr}");
                                             }
+                                            println!("{out}");
                                         }
                                     }
                                     kad::QueryResult::GetClosestPeers(Err(kad::GetClosestPeersError::Timeout { .. })) => {
@@ -299,26 +346,60 @@ async fn main() -> Result<()> {
                                     _ => {}
                                 }
                             }
-                            kad::Event::RoutingUpdated { peer, is_new_peer, addresses, old_peer, .. } => {
+                            kad::Event::RoutingUpdated { peer, is_new_peer, old_peer, .. } => {
+                                let mut out = "kademlia,routing_update".to_string();
                                 if is_new_peer {
-                                    println!("New peer added to routing table: {peer} with {} addresses", addresses.len());
+                                    out = format!("{out},new {peer}");
                                 }
                                 if let Some(old) = old_peer {
-                                    println!("Peer {peer} replaced {old} in routing table");
+                                    out = format!("{out},replaced {old}")
                                 }
+                                println!("{out}");
                             }
                             kad::Event::UnroutablePeer { peer } => {
-                                println!("Peer {peer} is unroutable");
+                                println!("kademlia,unroutable {peer}");
                             }
                             kad::Event::RoutablePeer { peer, address } => {
-                                println!("Peer {peer} is routable at {address}");
+                                println!("kademlia,routable,{peer},{address}");
                             }
                             _ => {}
                         }
                     }
                 }
                 _ => {}
-            }
+            },
+            _ = timer.tick() => {
+                if chatty {
+                    counter += 1;
+                    let (topic, msg) = create_test_message(&local_peer_id, counter)?;
+                    let mut buf = Vec::new();
+                    msg.encode(&mut buf)?;
+                    if let Err(error) = swarm.behaviour_mut().gossipsub.publish(topic, buf) {
+                        println!("error,{error}");
+                    }
+                }
+            },
+            _ = sig_term.recv() => {
+                // turn off our listeners
+                for listener_id in &listeners {
+                    let _ = swarm.remove_listener(*listener_id);
+                }
+
+                // disconnect from all connected peers
+                let connected: Vec<PeerId> = swarm.connected_peers().cloned().collect();
+                for peer_id in &connected {
+                    let _ = swarm.disconnect_peer_id(*peer_id);
+                }
+
+                shutdown = true;
+            },
+            _ = sig_quit.recv() => {
+                // received SIG_QUIT
+                println!("sigquit");
+                break 'run Ok(());
+            },
         }
     }
+
+    // fin
 }

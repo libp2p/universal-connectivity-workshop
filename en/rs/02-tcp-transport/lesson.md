@@ -116,7 +116,7 @@ By default, a libp2p swarm will emit events when it starts listening, connects t
 
 For now, we only care about the `ConnectionEstablished`, `ConnectionClosed`, and `OutgoingConnectionError` events because they will tell us if our dial succeeded or failed and when a connection has been closed. In this lesson, you only have to dial the remote peer, so you don't need to handle incoming connections yet. When you check your solution, a remote peer is started using Docker and if you successfully connect to it, it will gracefully close the connection. You do not need to do anything other than what is shown below.
 
-Add the following code to your event loop to handle connection events caused by dialing a remote peer:
+Add the following code to your event loop to handle connection events caused by dialing a remote peer, connecting and then closing the connection:
 
 ```rust
 loop {
@@ -145,7 +145,7 @@ After making these changes to your peer, hit the `c` key to check your solution.
 
 ## Testing Your Implementation
 
-If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solutionto see if it is correct. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshops/universal-conectivity-workshop/en/rs/02-tcp-transport`.
+If you are using the workshop tool to take this workshop, you only have to hit the `c` key to check your solution. However if you would like to test your solution manually, you can follow these steps. The `PROJECT_ROOT` environment variable is the path to your Rust project. The `LESSON_PATH` for this lesson is most likely `.workshops/universal-conectivity-workshop/en/rs/02-tcp-transport`.
 
 1. Set the environment variables:
    ```bash
@@ -160,7 +160,7 @@ If you are using the workshop tool to take this workshop, you only have to hit t
 
 3. Run with Docker Compose:
    ```bash
-   docker rm -f workshop-lesson ucw-checker-02-tcp-transport
+   docker rm -f workshop-lesson ucw-checker-en
    docker network rm -f workshop-net
    docker network create --driver bridge --subnet 172.16.16.0/24 workshop-net
    docker compose --project-name workshop up --build --remove-orphans
@@ -219,7 +219,7 @@ async fn main() -> Result<()> {
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = local_key.public().to_peer_id();
     
-    println!("Local peer id: {local_peer_id}", local_peer_id);
+    println!("Local peer id: {local_peer_id}");
     
     // Build the Swarm
     let mut swarm = SwarmBuilder::with_existing_identity(local_key)

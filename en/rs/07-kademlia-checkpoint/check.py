@@ -58,12 +58,18 @@ def check_output():
         # a correct solution causes the checker to output a sequence of messages like the following:
         # incoming,/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.16/udp/41972/quic-v1
         # connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/udp/41972/quic-v1
-        # identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
+        # identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity/0.1.0
         # subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity
         # msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from 12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE!
+        # kademlia,bootstrap
+        # kademlia,closestpeers,4
+        # kademlia,closestpeer,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.17/udp/9091/quic-v1
+        # kademlia,closestpeer,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.17/udp/9091/quic-v1
+        # kademlia,closestpeer,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.17/udp/9091/quic-v1
+        # kademlia,closestpeer,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.17/udp/9091/quic-v1
         # closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
 
-        # check for:
+        # check for at least one incoming message:
         #   incoming,/ip4/172.16.16.17/tcp/9092,/ip4/172.16.16.16/tcp/41972
         incoming_pattern = r"incoming,([/\w\.:-]+),([/\w\.:-]+)"
         incoming_matches = re.search(incoming_pattern, output)
@@ -86,7 +92,7 @@ def check_output():
 
         print(f"v Your peer at {f_message} dialed remote peer at {t_message}")
 
-        # check for:
+        # check for at least one connected message:
         #   connected,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ip4/172.16.16.16/tcp/41972
         connected_pattern = r"connected,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
         connected_matches = re.search(connected_pattern, output)
@@ -109,9 +115,9 @@ def check_output():
 
         print(f"v Connection established with {peerid_message} at {f_message}")
 
-        # check for:
-        #   identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,/ipfs/id/1.0.0,universal-connectivity/0.1.0
-        identify_pattern = r"identify,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+),([/\w\.:-]+)"
+        # check for at least one identify message:
+        #   identify,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity/0.1.0
+        identify_pattern = r"identify,(12D3KooW[A-Za-z0-9]+),([/\w\.:-]+)"
         identify_matches = re.search(identify_pattern, output)
         if not identify_matches:
             print("x No identify received")
@@ -124,12 +130,11 @@ def check_output():
             print(f"x {peerid_message}")
             return False
         
-        protocol = identify_matches.group(2)
-        agent = identify_matches.group(3)
+        agent = identify_matches.group(2)
 
-        print(f"v Identify received from {peerid_message}: protocol={protocol}, agent={agent}")
+        print(f"v Identify received from {peerid_message}: agent={agent}")
 
-        # check for:
+        # check for at least one subscribe message:
         #   subscribe,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE,universal-connectivity
         subscribe_pattern = r"subscribe,(12D3KooW[A-Za-z0-9]+),universal-connectivity"
         subscribe_matches = re.search(subscribe_pattern, output)
@@ -146,7 +151,7 @@ def check_output():
         
         print(f"v Gossipsub subscribe received from {peerid_message}: topic=universal-connectivity")
 
-        # check for:
+        # check for at least one msg message:
         #   msg,12D3KooWPWpaEjf8raRBZztEXMcSTXp8WBZwtcbhT7Xy1jyKCoN9,universal-connectivity,Hello from Universal Connectivity!
         msg_pattern = r"msg,(12D3KooW[A-Za-z0-9]+),universal-connectivity,(.+)"
         msg_matches = re.search(msg_pattern, output)
@@ -162,10 +167,20 @@ def check_output():
             return False
         
         msg = msg_matches.group(2)
-
         print(f"v Gossipsub message received from {peerid_message}: topic=universal-connectivity, msg={msg}")
 
-        # check for:
+        # check for at least one bootstrap message:
+        #   bootstrap
+        bootstrap_pattern = r"kademlia,bootstrap"
+        bootstrap_matches = re.search(bootstrap_pattern, output)
+        if not bootstrap_matches:
+            print("x No bootstrap received")
+            print(f"i Actual output: {repr(output)}")
+            return False
+
+        print(f"v Kademlia succesffully bootstrapped!!")
+
+        # check for at least one closed message:
         #   closed,12D3KooWC56YFhhdVtAuz6hGzhVwKu6SyYQ6qh4PMkTJawXVC8rE
         closed_pattern = r"closed,(12D3KooW[A-Za-z0-9]+)"
         closed_matches = re.search(closed_pattern, output)
