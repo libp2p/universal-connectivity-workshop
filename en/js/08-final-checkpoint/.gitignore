@@ -1,0 +1,8 @@
+# Node modules
+node_modules/
+
+# Temporary files
+*.tmp
+
+# OS files
+.DS_Store

@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: ./app
+    environment:
+      - TIMEOUT_DURATION=10s
+      - LOG_FILE=/app/stdout.log
+    stdin_open: true
+    tty: true 

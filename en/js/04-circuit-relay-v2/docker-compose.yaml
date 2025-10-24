@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  relay:
+    build: ./app
+    command: node relay.js
+    stdin_open: true
+    tty: true
+  listener:
+    build: ./app
+    command: node listener.js
+    stdin_open: true
+    tty: true
+  dialer:
+    build: ./app
+    command: node dialer.js
+    stdin_open: true
+    tty: true 

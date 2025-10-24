@@ -1,0 +1,21 @@
+title: Kademlia DHT
+slug: kademlia-dht
+language: javascript
+difficulty: advanced
+description: |
+  Master decentralized peer discovery and distributed storage with Kademlia DHT. Learn peer routing, content routing, and distributed key-value storage for building truly decentralized applications.
+status: NotStarted
+objectives:
+  - Configure libp2p nodes with Kademlia DHT service
+  - Implement peer routing for decentralized peer discovery
+  - Use content routing to announce and find content providers
+  - Store and retrieve values in distributed hash table
+  - Understand client vs server DHT modes
+  - Build multi-node DHT networks with bootstrap nodes
+validation:
+  method: output
+  success_regex: '\[BOOTSTRAP\] Started with Peer ID:|\[PROVIDER\] Started with Peer ID:|\[CONSUMER\] Started with Peer ID:|\+ Peer routing|Content routing|DHT.*operation'
+  failure_message: 'Kademlia DHT must demonstrate multi-node network with BOOTSTRAP, PROVIDER, and CONSUMER nodes, along with peer routing, content routing, and value storage operations.'
+  emoji_success: '+'
+  emoji_failure: 'X'
+

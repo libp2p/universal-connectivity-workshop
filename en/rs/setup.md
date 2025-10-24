@@ -1,4 +1,4 @@
-Before staritng this workshop, please set up a new Rust project using the following commands:
+Before starting this workshop, please set up a new Rust project using the following commands:
 
 ```sh
 cargo new --bin universal-connectivity

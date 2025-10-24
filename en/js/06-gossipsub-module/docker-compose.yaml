@@ -1,0 +1,19 @@
+services:
+  lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+    volumes:
+      - .:/workspace
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+    command: ["sh", "-c", "cd /app && node index.js > /workspace/stdout.log 2>&1"]
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

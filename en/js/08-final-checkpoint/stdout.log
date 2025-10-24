@@ -1,0 +1,54 @@
+Starting Universal Connectivity Application...
+[SYSTEM] Generated Peer ID: 12D3KooWLsY5evCZTEiudwo4xUgijHzEEg89yNwCANn9meJU7sGm
+[SYSTEM] Node started successfully
+[SYSTEM] Listening on 2 address(es):
+[SYSTEM]   /ip4/127.0.0.1/tcp/45395/p2p/12D3KooWLd5P7gvLBeBMirXeUvVsogPMUiozjp9ggfmJYDpiMrsF
+[SYSTEM]   /ip4/172.18.0.3/tcp/45395/p2p/12D3KooWLd5P7gvLBeBMirXeUvVsogPMUiozjp9ggfmJYDpiMrsF
+[DHT] Kademlia DHT initialized in server mode
+
+[CHAT] Initializing chat room...
+[CHAT] Subscribed to topic: universal-connectivity
+[CHAT] Subscribed to discovery topic: universal-connectivity-workshop-js-peer-discovery
+[CHAT] Message handlers registered successfully
+[CHAT] Joined chat room as: YDpiMrsF
+[CONNECTION] Attempting to connect to: /ip4/172.16.16.17/tcp/9091/p2p/
+[CONNECTION] Failed to connect to /ip4/172.16.16.17/tcp/9091/p2p/: Component p2p was missing value
+[CHAT] Waiting for Identify protocol to exchange supported protocols...
+[CHAT] Waiting for Identify protocol(s) that advertise pubsub...
+[CHAT] Warning: no peer advertised gossipsub within timeout. Continuing checks...
+[CHAT] Checking Gossipsub status...
+[DEBUG] Connected to 0 peer(s):
+[DEBUG] Local subscriptions: universal-connectivity, universal-connectivity-workshop-js-peer-discovery
+[DEBUG] Topic "universal-connectivity": 0 peer(s)
+[DEBUG] Topic "universal-connectivity-workshop-js-peer-discovery": 0 peer(s)
+[CHAT] Waiting up to 10 seconds for mesh to form...
+[CHAT] Check 1/10: 0 peer(s) in mesh
+[CHAT] Check 2/10: 0 peer(s) in mesh
+[CHAT] Check 3/10: 0 peer(s) in mesh
+[CHAT] Check 4/10: 0 peer(s) in mesh
+[CHAT] Check 5/10: 0 peer(s) in mesh
+[CHAT] Check 6/10: 0 peer(s) in mesh
+[CHAT] Check 7/10: 0 peer(s) in mesh
+[CHAT] Check 8/10: 0 peer(s) in mesh
+[CHAT] Check 9/10: 0 peer(s) in mesh
+[CHAT] Check 10/10: 0 peer(s) in mesh
+
+============================================================
+⚠️  NO MESH PEERS FOUND
+============================================================
+[CHAT] Running in standalone mode
+[CHAT] Start another peer and connect it to this node
+[CHAT] Messages will be queued until peers connect
+============================================================
+
+[CHAT] ⚠️  No peers in Gossipsub mesh yet
+[CHAT] Message not sent: "Hello! I'm YDpiMrsF - ready to chat!"
+[CHAT] Tip: Wait for another peer to connect and subscribe
+[SYSTEM] Running in non-interactive mode
+[SYSTEM] Listening for messages...
+[SYSTEM] Will run for 60 then exit
+[CHAT] ⚠️  No peers in Gossipsub mesh yet
+[CHAT] Message not sent: "Heartbeat - 0 peer(s) connected"
+[CHAT] Tip: Wait for another peer to connect and subscribe
+[SYSTEM] Timeout reached - shutting down
+[SYSTEM] Node stopped successfully

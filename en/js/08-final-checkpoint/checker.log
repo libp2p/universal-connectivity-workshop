@@ -1,0 +1,82 @@
+Starting Universal Connectivity Checker...
+Local peer id: 12D3KooWBqFBLB5s6suMcnjuuhcm5wwsRbCnUetnkjqHbDHfYLjF
+Checker node started successfully
+Listening on 2 address(es)
+  /ip4/127.0.0.1/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+  /ip4/172.18.0.2/tcp/9091/p2p/12D3KooWGtY31KWkhJHpWU8T3W4hriEHMCtT5LtkmPD4wNuWikLc
+Subscribed to topic: universal-connectivity
+Subscribed to topic: universal-connectivity-file
+Subscribed to topic: universal-connectivity-browser-peer-discovery
+
+[CHAT] Initializing checker chat room...
+[CHAT] Subscribed to topic: universal-connectivity
+[CHAT] Subscribed to discovery topic: universal-connectivity-workshop-js-peer-discovery
+[CHAT] Message handlers registered successfully
+[CHAT] Joined chat room as: Checker
+[CHAT] Waiting for Identify protocol to exchange supported protocols...
+[CHAT] Waiting for Identify protocol(s) that advertise pubsub...
+Peer updated: 12D3KooWLd5P7gvLBeBMirXeUvVsogPMUiozjp9ggfmJYDpiMrsF
+[CHAT] Warning: no peer advertised gossipsub within timeout. Continuing checks...
+[CHAT] Checking Gossipsub status...
+[DEBUG] Connected to 0 peer(s):
+[DEBUG] Local subscriptions: universal-connectivity, universal-connectivity-file, universal-connectivity-browser-peer-discovery, universal-connectivity-workshop-js-peer-discovery
+[DEBUG] Topic "universal-connectivity": 0 peer(s)
+[DEBUG] Topic "universal-connectivity-file": 0 peer(s)
+[DEBUG] Topic "universal-connectivity-browser-peer-discovery": 0 peer(s)
+[DEBUG] Topic "universal-connectivity-workshop-js-peer-discovery": 0 peer(s)
+[CHAT] Waiting up to 10 seconds for mesh to form...
+[CHAT] Check 1/10: 0 peer(s) in mesh
+[CHAT] Check 2/10: 0 peer(s) in mesh
+[CHAT] Check 3/10: 0 peer(s) in mesh
+[CHAT] Check 4/10: 0 peer(s) in mesh
+[CHAT] Check 5/10: 0 peer(s) in mesh
+[CHAT] Check 6/10: 0 peer(s) in mesh
+[CHAT] Check 7/10: 0 peer(s) in mesh
+[CHAT] Check 8/10: 0 peer(s) in mesh
+[CHAT] Check 9/10: 0 peer(s) in mesh
+[CHAT] Check 10/10: 0 peer(s) in mesh
+
+============================================================
+⚠️  NO MESH PEERS FOUND
+============================================================
+[CHAT] Running in standalone mode
+[CHAT] Students can connect to this checker and join the chat!
+[CHAT] Copy the listening address above and dial from your app
+============================================================
+
+[CHAT] ⚠️  No peers in Gossipsub mesh yet
+[CHAT] Message not sent: "Hello! I'm Checker - ready to chat!"
+[CHAT] Tip: Wait for another peer to connect and subscribe
+[SYSTEM] Running in non-interactive mode
+[SYSTEM] Listening for messages...
+[SYSTEM] Will run for 60 then exit
+Connected to: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Received identify from 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6: protocol_version: ipfs/0.1.0
+Peer agent: js-libp2p/3.0.7 node/22.20.0
+Peer supports 7 protocols
+[GOSSIPSUB] subscription-change event from EdZFswa6
+[GOSSIPSUB]   Topic: universal-connectivity, Subscribe: true
+Peer EdZFswa6 subscribed to topic: universal-connectivity
+✓ Chat mesh now has 1 subscriber(s)
+  - Mesh peer: EdZFswa6
+[GOSSIPSUB]   Topic: universal-connectivity-workshop-js-peer-discovery, Subscribe: true
+Peer EdZFswa6 subscribed to topic: universal-connectivity-workshop-js-peer-discovery
+[GOSSIPSUB] subscription-change from EdZFswa6: [{"topic":"universal-connectivity","subscribe":true},{"topic":"universal-connectivity-workshop-js-peer-discovery","subscribe":true}]
+[GOSSIPSUB] ✓ Peer EdZFswa6 subscribed to universal-connectivity
+[GOSSIPSUB] Mesh snapshot: 1 subscriber(s)
+[GOSSIPSUB]   - EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Peer updated: 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6
+Received chat message from 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6: Hello! I'm EdZFswa6 - ready to chat!
+[EdZFswa6]: Hello! I'm EdZFswa6 - ready to chat!
+[CHAT] Publishing message to 1 peer(s) in mesh
+[CHAT] ✅ Message sent: "Heartbeat - 1 peer(s) connected"
+Received chat message from 12D3KooWMaFinxcyFLTCSNXxDsGhu3mjVP7RuujGewE9EdZFswa6: Heartbeat - 1 peer(s) connected
+[EdZFswa6]: Heartbeat - 1 peer(s) connected
+[SYSTEM] Timeout reached - shutting down
+[SYSTEM] Node stopped successfully

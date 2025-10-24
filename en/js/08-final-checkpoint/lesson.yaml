@@ -1,0 +1,21 @@
+title: Final Checkpoint - Universal Connectivity
+slug: final-checkpoint
+language: javascript
+difficulty: advanced
+description: |
+  🏆 Final Checkpoint - Bring together all libp2p protocols to create a complete universal connectivity application with real-time chat messaging. This is the culmination of your entire workshop journey!
+status: NotStarted
+objectives:
+  - Integrate all libp2p protocols learned throughout the workshop
+  - Configure multi-protocol libp2p node (TCP, Ping, Identify, Gossipsub, Kademlia DHT)
+  - Implement complete peer-to-peer chat application
+  - Handle connection lifecycle and protocol events
+  - Create production-ready decentralized application
+  - Demonstrate seamless multi-protocol interaction
+validation:
+  method: output
+  success_regex: 'Starting Universal Connectivity Application|\[SYSTEM\] Generated Peer ID:|\[SYSTEM\] Node started|\[CHAT\].*Joined chat room|\[CHAT\].*ready to chat'
+  failure_message: 'Final checkpoint must demonstrate complete universal connectivity with all protocols integrated: TCP transport, Ping, Identify, Gossipsub chat, and Kademlia DHT working together seamlessly.'
+  emoji_success: '+'
+  emoji_failure: 'X'
+

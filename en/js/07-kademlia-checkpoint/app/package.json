@@ -1,0 +1,21 @@
+{
+  "name": "lesson-07-kad-dht",
+  "version": "1.0.0",
+  "description": "Lesson 7: Kademlia DHT - Learn decentralized peer discovery with libp2p",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-noise": "^17.0.0",
+    "@chainsafe/libp2p-yamux": "^8.0.1",
+    "@libp2p/identify": "^4.0.5",
+    "@libp2p/kad-dht": "^16.0.5",
+    "@libp2p/tcp": "^11.0.5",
+    "@multiformats/multiaddr": "^13.0.1",
+    "libp2p": "^3.0.6",
+    "multiformats": "^13.4.1",
+    "uint8arrays": "^5.1.0"
+  }
+}
