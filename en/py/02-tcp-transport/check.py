@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Check script for Lesson 2: TCP Transport (Python)
 Validates that the student's py-libp2p solution can connect and handle connections.
@@ -6,6 +7,12 @@ Validates that the student's py-libp2p solution can connect and handle connectio
 import os
 import re
 import sys
+import io
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 def validate_peer_id(peer_id_str):
     """Validate that the peer ID string is a valid libp2p PeerId format"""

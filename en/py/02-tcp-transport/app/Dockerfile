@@ -10,6 +10,10 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
+COPY main.py .
 
 # Configurable timeout duration
 ARG TIMEOUT_DURATION
@@ -17,5 +21,8 @@ ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
 ARG REMOTE_ADDR
 ENV REMOTE_ADDR=${REMOTE_ADDR}
 
+# Set Python to run in unbuffered mode for immediate output
+ENV PYTHONUNBUFFERED=1
+
 # Set the command to run with timeout and redirect output
-CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} python /app/main.py > /app/stdout.log 2>&1"]
+CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} python -u main.py 2>&1 | tee stdout.log"]

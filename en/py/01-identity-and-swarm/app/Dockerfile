@@ -14,7 +14,7 @@ COPY requirements.txt* ./
 RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
 # Install common dependencies for the workshop
-RUN pip install cryptography base58 aiohttp
+RUN pip install cryptography base58 aiohttp trio
 
 # Copy the application
 COPY . .
@@ -40,5 +40,8 @@ COPY . .
 ARG TIMEOUT_DURATION=10s
 ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
 
+# Set Python to run in unbuffered mode for immediate output
+ENV PYTHONUNBUFFERED=1
+
 # Set the command to run with timeout and redirect output
-CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} python app/main.py > stdout.log 2>&1"]
+CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} python -u main.py 2>&1 | tee stdout.log"]

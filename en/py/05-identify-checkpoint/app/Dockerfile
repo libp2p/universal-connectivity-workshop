@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     libssl-dev \
+    libgmp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install
@@ -22,12 +23,15 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    libgmp10 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy from builder
-COPY --from=builder /app /app
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app/main.py /app/main.py
 
 # Configurable environment variables
 ARG TIMEOUT_DURATION
@@ -35,5 +39,8 @@ ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
 ARG REMOTE_ADDR
 ENV REMOTE_ADDR=${REMOTE_ADDR}
 
+# Set Python to run in unbuffered mode for immediate output
+ENV PYTHONUNBUFFERED=1
+
 # Run the application with timeout
-CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} python /app/main.py > /app/stdout.log 2>&1"]
+CMD ["/bin/sh", "-c", "sleep 5 && timeout ${TIMEOUT_DURATION} python -u main.py 2>&1 | tee stdout.log"]

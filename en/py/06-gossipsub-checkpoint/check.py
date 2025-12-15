@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Check script for Lesson 6: Gossipsub Checkpoint
 Validates that the chat program can subscribe to topics and receive gossipsub messages.
 """
 
 import sys
+import io
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 import os
 import re
 

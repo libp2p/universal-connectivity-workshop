@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Check script for the Universal Connectivity Program (Identify Checkpoint)
 Validates that the program's output shows it can connect, identify, and ping remote peers.
@@ -6,6 +7,12 @@ Validates that the program's output shows it can connect, identify, and ping rem
 import os
 import re
 import sys
+import io
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Regex to capture a standard libp2p PeerID
 PEER_ID_REGEX = r"(12D3KooW[A-Za-z0-9]+)"

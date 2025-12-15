@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Check script for Kademlia DHT Implementation
 Validates that the student's solution can run DHT nodes in both server and client modes
@@ -8,6 +9,12 @@ Validates that the student's solution can run DHT nodes in both server and clien
 import os
 import re
 import sys
+import io
+
+# Fix Windows console encoding issues
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 
 def validate_peer_id(peer_id_str):
