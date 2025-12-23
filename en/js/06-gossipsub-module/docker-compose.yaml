@@ -1,0 +1,34 @@
+services:
+  lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    stop_grace_period: 30s
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+    volumes:
+      - ./stdout.log:/workspace/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+    command: ["sh", "-c", "node index.js > /workspace/stdout.log 2>&1"]
+
+  checker:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-en:latest
+    depends_on:
+      - lesson
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - LISTEN_ADDRS=${LISTEN_ADDRS:-/ip4/172.16.16.17/tcp/9092}
+      - CLOSE_AFTER_GOSSIP_MSG=TRUE
+    volumes:
+      - ./checker.log:/app/checker.log
+      - ${CHECKER_KEY_PATH:-./12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB.key}:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

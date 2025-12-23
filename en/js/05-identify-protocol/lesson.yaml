@@ -1,0 +1,17 @@
+title: Identify Protocol (Checkpoint 2)
+slug: identify-protocol
+language: javascript
+difficulty: intermediate
+checkpoint: true
+description: |
+  Implement the identify protocol for peer capability discovery. Connect to a remote peer and extract its PeerId and supported protocols.
+status: NotStarted
+objectives:
+  - Implement the identify protocol in your libp2p node
+  - Connect to a remote peer and extract its PeerId and supported protocols
+validation:
+  method: output
+  success_regex: 'Remote PeerId: [A-Za-z0-9]+.*Protocols:.*\[.*\]'
+  failure_message: 'Output must include remote PeerId and protocols.'
+  emoji_success: '\u2705'
+  emoji_failure: '\u274C' 

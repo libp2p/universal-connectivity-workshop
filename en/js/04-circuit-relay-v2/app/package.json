@@ -1,0 +1,22 @@
+{
+  "name": "lesson-04-quic-transport",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "relay": "node relay.js",
+    "listener": "node listener.js",
+    "dialer": "node dialer.js"
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-noise": "^17.0.0",
+    "@chainsafe/libp2p-yamux": "^8.0.1",
+    "@libp2p/circuit-relay-v2": "^4.1.0",
+    "@libp2p/identify": "^4.0.7",
+    "@libp2p/peer-id-factory": "^4.2.4",
+    "@libp2p/ping": "^3.0.7",
+    "@libp2p/tcp": "^11.0.7",
+    "@multiformats/multiaddr": "^13.0.1",
+    "libp2p": "^3.1.0"
+  }
+}

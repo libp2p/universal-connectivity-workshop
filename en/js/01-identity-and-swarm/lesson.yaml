@@ -1,0 +1,18 @@
+title: Identity & Swarm Basics
+slug: identity-and-swarm
+language: javascript
+difficulty: beginner
+description: |
+  Learn how to generate a PeerId, set up a basic js-libp2p node, and print your PeerId and listening addresses.
+status: NotStarted
+objectives:
+  - Generate a PeerId using js-libp2p
+  - Set up a minimal libp2p node with TCP transport
+  - Print PeerId and listening addresses
+  - Observe basic node events
+validation:
+  method: output
+  success_regex: 'PeerId: [A-Za-z0-9]+\nListening on: .+'
+  failure_message: 'Output must include a valid PeerId and at least one listening address.'
+  emoji_success: '\u2705' 
+  emoji_failure: '\u274C'

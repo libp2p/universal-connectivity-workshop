@@ -1,0 +1,58 @@
+services:
+  lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - NODE_ENV=production
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1,/ip4/172.16.16.18/udp/9091/quic-v1}
+      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1/p2p/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB,/ip4/172.16.16.18/udp/9091/quic-v1/p2p/12D3KooWFg4cGhT7UAHJ6D2CzNCkr7MX6eN9vjhK1xSXweHkvd1X}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+    command: ["sh", "-c", "cd /app && node index.js > /app/stdout.log 2>&1"]
+
+  checker-01:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-en:latest
+    container_name: ucw-checker-en-01
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - LISTEN_ADDRS=${LISTEN_ADDRS:-/ip4/172.16.16.17/udp/9091/quic-v1}
+      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.18/udp/9091/quic-v1/p2p/12D3KooWFg4cGhT7UAHJ6D2CzNCkr7MX6eN9vjhK1xSXweHkvd1X}
+      - CLOSE_AFTER_KADEMLIA_BOOTSTRAP=TRUE
+    volumes:
+      - ./checker.log:/app/checker.log
+      - ${CHECKER1_KEY_PATH:-./12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB.key}:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+
+  checker-02:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-en:latest
+    container_name: ucw-checker-en-02
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-60s}
+      - LISTEN_ADDRS=${LISTEN_ADDRS:-/ip4/172.16.16.18/udp/9091/quic-v1}
+      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-/ip4/172.16.16.17/udp/9091/quic-v1/p2p/12D3KooWDj4uNjMpUtESkyJa2ZB6DtXg5PKC4pTUptJixE7zo9gB}
+      - CLOSE_AFTER_KADEMLIA_BOOTSTRAP=TRUE
+    volumes:
+      - ./checker2.log:/app/checker.log
+      - ${CHECKER2_KEY_PATH:-./12D3KooWFg4cGhT7UAHJ6D2CzNCkr7MX6eN9vjhK1xSXweHkvd1X.key}:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.18
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

@@ -1,0 +1,11 @@
+# Generated log files
+*.log
+
+# Node modules
+node_modules/
+
+# Temporary files
+*.tmp
+
+# Generated peer IDs
+peer-id.json

@@ -1,0 +1,18 @@
+title: Gossipsub Pub/Sub
+slug: gossipsub-pubsub
+language: javascript
+difficulty: intermediate
+description: |
+  Implement pub/sub messaging for group chat using libp2p's Gossipsub protocol. Learn to join topics, send and receive messages in real-time.
+status: NotStarted
+objectives:
+  - Set up libp2p nodes with Gossipsub pub/sub service
+  - Join a topic and subscribe to messages
+  - Send and receive messages in real-time
+  - Handle pub/sub events and message broadcasting
+validation:
+  method: output
+  success_regex: '\[NODE[12]\] Started with Peer ID:|\[NODE[12]\] Successfully connected|\[NODE[12]\] Received message from'
+  failure_message: 'GossipSub must demonstrate coordinated multi-peer messaging with both NODE1 and NODE2 activities.'
+  emoji_success: '+'
+  emoji_failure: 'X'

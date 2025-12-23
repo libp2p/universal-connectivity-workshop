@@ -1,0 +1,35 @@
+services:
+  node1:
+    build: ./app
+    container_name: identify-node1
+    command: ["sh", "-c", "if [ ! -f /workspace/peer-id-node1.json ]; then cd /app && node generate-peer-ids.js && cp peer-id-node*.json /workspace/; fi && cp /workspace/peer-id-node1.json /app/peer-id-node1.json && cd /app && node node1.js > /workspace/node1.log 2>&1"]
+    volumes:
+      - .:/workspace
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+    healthcheck:
+      test: ["CMD", "grep", "-q", "Node1 started with id", "/workspace/node1.log"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+
+  node2:
+    build: ./app
+    container_name: identify-node2
+    depends_on:
+      node1:
+        condition: service_healthy
+    command: ["sh", "-c", "if [ ! -f /workspace/peer-id-node2.json ]; then cd /app && node generate-peer-ids.js && cp peer-id-node*.json /workspace/; fi && cp /workspace/peer-id-node2.json /app/peer-id-node2.json && sleep 3 && cd /app && node node2.js > /workspace/node2.log 2>&1"]
+    environment:
+      - NODE1_ADDR=/ip4/172.16.16.16/tcp/9092
+    volumes:
+      - .:/workspace
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

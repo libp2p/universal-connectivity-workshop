@@ -1,0 +1,47 @@
+services:
+  relay:
+    build: ./app
+    container_name: circuit-relay-v2-relay-node
+    command: ["sh", "-c", "node relay.js > /workspace/relay.log 2>&1"]
+    volumes:
+      - .:/workspace
+    networks:
+      circuit-relay-net:
+        ipv4_address: 172.18.0.10
+    healthcheck:
+      test: ["CMD", "grep", "-q", "Node started with id", "/workspace/relay.log"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+
+  listener:
+    build: ./app
+    container_name: circuit-relay-listener
+    depends_on:
+      relay:
+        condition: service_healthy
+    command: ["sh", "-c", "sleep 3 && max_attempts=15 && attempt=0 && while [ $$attempt -lt $$max_attempts ]; do if [ -f /workspace/relay.log ] && grep -q 'Listening on:' /workspace/relay.log && grep -q '/ip4/172.18.0.10' /workspace/relay.log; then RELAY_ADDR=$$(grep '/ip4/172.18.0.10' /workspace/relay.log | grep -oE '/ip4/172[.]18[.]0[.]10/tcp/[0-9]+/p2p/[A-Za-z0-9]+' | head -1) && if [ -n \"$$RELAY_ADDR\" ]; then node listener.js \"$$RELAY_ADDR\" > /workspace/listener.log 2>&1 && exit 0; fi; fi && attempt=$$((attempt+1)) && sleep 1; done && echo 'Failed to extract relay address from relay.log' > /workspace/listener.log"]
+    volumes:
+      - .:/workspace
+    networks:
+      circuit-relay-net:
+        ipv4_address: 172.18.0.11
+
+  dialer:
+    build: ./app
+    container_name: circuit-relay-dialer
+    depends_on:
+      - listener
+    command: ["sh", "-c", "sleep 6 && max_attempts=15 && attempt=0 && while [ $$attempt -lt $$max_attempts ]; do if [ -f /workspace/listener.log ] && grep -q 'Advertising with a relay address of' /workspace/listener.log; then LISTENER_RELAY_ADDR=$$(grep 'Advertising with a relay address of' /workspace/listener.log | grep -oE '/ip4/[0-9.]+/tcp/[0-9]+/p2p/[A-Za-z0-9]+/p2p-circuit/p2p/[A-Za-z0-9]+' | head -1) && if [ -n \"$$LISTENER_RELAY_ADDR\" ]; then node dialer.js \"$$LISTENER_RELAY_ADDR\" > /workspace/dialer.log 2>&1 && exit 0; fi; fi && attempt=$$((attempt+1)) && sleep 1; done && echo 'Failed to extract listener relay address from listener.log' > /workspace/dialer.log"]
+    volumes:
+      - .:/workspace
+    networks:
+      circuit-relay-net:
+        ipv4_address: 172.18.0.12
+
+networks:
+  circuit-relay-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/24 

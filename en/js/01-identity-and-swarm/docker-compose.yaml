@@ -1,0 +1,13 @@
+services:
+  lesson:
+    build: ./app
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+
+networks:
+  default:
+    name: workshop-net
+    external: true

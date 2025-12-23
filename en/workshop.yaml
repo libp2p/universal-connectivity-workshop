@@ -2,8 +2,34 @@ title: Universal Connectivity
 authors: [Workshop Contributors]
 copyright: Copyright 2024 Paper Aviation, LLC
 license: Apache-2.0
-homepage: https://github.com/libp2p/rust-libp2p
+homepage: 
+  - https://github.com/libp2p/rust-libp2p
+  - https://github.com/libp2p/js-libp2p
 difficulty: intermediate
 duration: 1-3 hours
-description: Learn to build peer-to-peer applications using rust-libp2p, from basic connectivity to a complete universal connectivity application with chat and file sharing.
+description: Learn to build peer-to-peer applications using libp2p, from basic connectivity to a complete universal connectivity application with chat and file sharing.
 status: NotStarted
+
+programming_languages:
+  - rs
+  - js
+
+lesson_paths:
+  rs:
+    - "rs/01-identity-and-swarm"
+    - "rs/02-tcp-transport"  
+    - "rs/03-ping-checkpoint"
+    - "rs/04-quic-transport"
+    - "rs/05-identify-checkpoint"
+    - "rs/06-gossipsub-checkpoint"
+    - "rs/07-kademlia-checkpoint"
+    - "rs/08-final-checkpoint"
+  js:
+    - "js/01-identity-and-swarm"
+    - "js/02-tcp-transport"
+    - "js/03-ping-checkpoint"
+    - "js/04-circuit-relay-v2"
+    - "js/05-identify-protocol"
+    - "js/06-gossipsub-checkpoint"
+    - "js/07-kademlia-checkpoint"
+    - "js/08-final-checkpoint"

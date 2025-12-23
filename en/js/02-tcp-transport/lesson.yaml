@@ -1,0 +1,18 @@
+title: TCP Transport
+slug: tcp-transport
+language: javascript
+difficulty: beginner
+description: |
+  Set up TCP transport with Noise encryption and Yamux multiplexing in js-libp2p. Learn to handle connection events and errors robustly.
+status: NotStarted
+objectives:
+  - Add TCP transport to your libp2p node
+  - Add Noise encryption and Yamux multiplexing
+  - Listen on a TCP address and print it
+  - Handle connection and error events
+validation:
+  method: output
+  success_regex: 'Listening on: /ip4/.+/tcp/\d+/p2p/[A-Za-z0-9]+'
+  failure_message: 'Output must include at least one valid TCP multiaddr.'
+  emoji_success: '\u2705'
+  emoji_failure: '\u274C'

@@ -1,0 +1,24 @@
+# macOS system files
+.DS_Store
+
+# Environment files
+.env
+
+# Log files
+*.log
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker volumes and generated files
+*.txt
+!setup.md
+!lesson.md
+
+# Checker output
+checker.log
+checker1.log
+checker2.log

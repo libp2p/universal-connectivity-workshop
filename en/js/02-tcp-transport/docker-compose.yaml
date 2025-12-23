@@ -1,0 +1,34 @@
+services:
+  lesson:
+    build: ./app
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
+      - REMOTE_PEERS=${REMOTE_PEERS:-/ip4/172.16.16.17/tcp/9092}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+
+  checker:
+    image: ghcr.io/libp2p/universal-connectivity-workshop/ucw-checker-en:latest
+    container_name: ucw-checker-en
+    depends_on:
+      - lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
+      - LISTEN_ADDRS=${LISTEN_ADDRS:-/ip4/172.16.16.17/tcp/9092}
+      - CLOSE_AFTER_CONNECTED=TRUE
+    volumes:
+      - ./checker.log:/app/checker.log
+      - ${CHECKER_KEY_PATH:-../../checker/keys/checker.key}:/app/key
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.17
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true
