@@ -1,0 +1,22 @@
+title: GossipSub Pub/Sub Checkpoint
+description: >
+  Implement publish-subscribe messaging using GossipSub, a scalable and
+  efficient pub/sub protocol. Learn how to create topics, publish messages,
+  and handle subscriptions in a decentralized network.
+status: NotStarted
+objectives:
+  - Understand pub/sub messaging patterns
+  - Implement GossipSub protocol
+  - Create and join topics
+  - Publish and receive messages
+  - Handle message validation
+concepts:
+  - Publish-Subscribe Pattern
+  - GossipSub Protocol
+  - Topic-Based Messaging
+  - Message Routing
+  - Decentralized Communication
+difficulty: intermediate
+estimated_time: 60
+prerequisites:
+  - 05-identify-checkpoint

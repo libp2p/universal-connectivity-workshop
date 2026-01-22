@@ -1,0 +1,23 @@
+title: Kademlia DHT Checkpoint
+description: >
+  Implement a Kademlia Distributed Hash Table (DHT) for peer and content
+  discovery. Learn how DHT enables decentralized routing, peer discovery,
+  and content addressing in peer-to-peer networks.
+status: NotStarted
+objectives:
+  - Understand DHT fundamentals
+  - Implement Kademlia DHT
+  - Perform peer discovery
+  - Provide and find content
+  - Bootstrap DHT network
+concepts:
+  - Distributed Hash Table
+  - Kademlia Algorithm
+  - Peer Discovery
+  - Content Routing
+  - Provider Records
+  - DHT Bootstrapping
+difficulty: advanced
+estimated_time: 75
+prerequisites:
+  - 06-gossipsub-checkpoint

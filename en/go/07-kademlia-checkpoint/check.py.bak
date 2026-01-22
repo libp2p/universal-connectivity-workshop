@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Check script for Lesson 7: Kademlia DHT Checkpoint (Final Lesson!)
+Validates DHT implementation with bootstrap, peer discovery, and content routing.
+"""
+
+import subprocess
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import sys
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import os
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import re
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+def check_output():
+    """Check the output log for expected content"""
+    if not os.path.exists("stdout.log"):
+        print("✗ Error: stdout.log file not found")
+        print("ℹ Run the application first to generate output")
+        return False
+
+    try:
+        with open("stdout.log", "r") as f:
+            output = f.read()
+
+        print("ℹ Checking application output...")
+
+        if not output.strip():
+            print("✗ stdout.log is empty - application may have failed to start")
+            return False
+
+        # Check for startup message
+        if "Starting Universal Connectivity Application" not in output:
+            print("✗ Missing startup message")
+            return False
+        print("✓ Found startup message")
+
+        # Check for peer ID
+        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
+        peer_id_match = re.search(peer_id_pattern, output)
+        if not peer_id_match:
+            print("✗ Missing peer ID output")
+            return False
+        print(f"✓ Found peer ID: {peer_id_match.group(1)}")
+
+        # Check for DHT creation
+        if "DHT instance created" not in output:
+            print("✗ Missing 'DHT instance created' message")
+            print("ℹ Make sure you call: dht.New(ctx, h)")
+            return False
+        print("✓ DHT instance created")
+
+        # Check for bootstrap connection attempts
+        if "Connecting to bootstrap" not in output:
+            print("✗ Missing bootstrap connection attempts")
+            print("ℹ Make sure you connect to bootstrap nodes")
+            return False
+        print("✓ Found bootstrap connection attempts")
+
+        # Check for at least one successful bootstrap connection
+        if "Connected to bootstrap peer:" not in output:
+            print("⚠ Warning: No successful bootstrap connections")
+            print("ℹ This may be due to network issues - check connectivity")
+        else:
+            bootstrap_pattern = r"Connected to bootstrap peer: ([A-Za-z0-9]+)"
+            bootstrap_matches = re.findall(bootstrap_pattern, output)
+            print(f"✓ Connected to {len(bootstrap_matches)} bootstrap peer(s)")
+
+        # Check for DHT bootstrap
+        if "Bootstrapping DHT" not in output and "Bootstrap" not in output:
+            print("✗ Missing DHT bootstrap")
+            print("ℹ Make sure you call: kadDHT.Bootstrap(ctx)")
+            return False
+        print("✓ DHT bootstrap initiated")
+
+        # Check for bootstrap completion
+        if "DHT bootstrap complete" in output or "bootstrap complete" in output.lower():
+            print("✓ DHT bootstrap completed")
+
+        # Check for DHT population wait
+        if "Waiting for DHT" in output or "populate" in output.lower():
+            print("✓ Waiting for DHT to populate")
+
+        # Check for peer discovery
+        if "Discovering" in output or "Discovered peer" in output:
+            print("✓ Peer discovery initiated")
+
+            # Count discovered peers
+            discovered_pattern = r"Discovered peer \d+:"
+            discovered_matches = re.findall(discovered_pattern, output)
+            if discovered_matches:
+                print(f"✓ Discovered {len(discovered_matches)} peer(s)")
+
+        # Check for content provision
+        if "Providing content" in output or "Announced content" in output:
+            print("✓ Content provision found")
+
+            # Check for content ID
+            content_pattern = r"Announced content: (Qm[A-Za-z0-9]+)"
+            content_match = re.search(content_pattern, output)
+            if content_match:
+                print(f"✓ Content announced: {content_match.group(1)[:16]}...")
+
+        # Check for finding providers
+        if "Finding providers" in output or "Found provider" in output:
+            print("✓ Provider search found")
+
+            # Check if found ourselves as provider
+            if "Found ourselves" in output or "ourselves as provider" in output:
+                print("✓ Found ourselves as content provider")
+
+        # Check for running state
+        if "DHT is active" in output or "Press Ctrl+C" in output:
+            print("✓ Application reached running state")
+
+        print("✓ All output checks passed")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading stdout.log: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def check_code_structure():
+    """Check if the code has the expected structure"""
+    app_file = "app/main.go"
+
+    if not os.path.exists(app_file):
+        print("✗ Error: app/main.go file not found")
+        return False
+
+    try:
+        with open(app_file, "r") as f:
+            code = f.read()
+
+        print("ℹ Checking code structure...")
+
+        # Check for required imports
+        required_imports = [
+            "github.com/libp2p/go-libp2p",
+            "dht",
+        ]
+
+        for imp in required_imports:
+            if imp not in code:
+                print(f"✗ Missing import: {imp}")
+                if imp == "dht":
+                    print("ℹ Add: dht \"github.com/libp2p/go-libp2p-kad-dht\"")
+                return False
+        print("✓ Required imports found")
+
+        # Check for DHT creation
+        if "dht.New" not in code:
+            print("✗ Missing DHT creation")
+            print("ℹ Add: kadDHT, err := dht.New(ctx, h)")
+            return False
+        print("✓ DHT creation found")
+
+        # Check for bootstrap
+        if ".Bootstrap(" not in code:
+            print("✗ Missing DHT bootstrap call")
+            print("ℹ Add: kadDHT.Bootstrap(ctx)")
+            return False
+        print("✓ DHT bootstrap call found")
+
+        # Check for bootstrap peers
+        if "bootstrap.libp2p.io" in code or "bootstrap" in code.lower():
+            print("✓ Bootstrap peers configuration found")
+
+        # Check for peer discovery
+        if "FindPeers" in code or "Advertise" in code:
+            print("✓ Peer discovery code found")
+
+        # Check for content provision
+        if ".Provide(" in code or "kadDHT.Provide" in code:
+            print("✓ Content provision code found")
+
+        # Check for finding providers
+        if "FindProvidersAsync" in code or "FindProviders" in code:
+            print("✓ Provider search code found")
+
+        # Check for multihash (content IDs)
+        if "multihash" in code:
+            print("✓ Multihash usage found")
+
+        print("✓ Code structure is correct")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading code file: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def main():
+    """Main check function"""
+    print("Checking Lesson 7: Kademlia DHT Checkpoint (Final Lesson!)")
+    print("=" * 60)
+
+    try:
+        # Check code structure first
+        if not check_code_structure():
+            print("\n⚠ Fix the code structure issues and try again")
+            print("\nQuick fix checklist:")
+            print("  1. Import: dht \"github.com/libp2p/go-libp2p-kad-dht\"")
+            print("  2. Create: kadDHT, _ := dht.New(ctx, h)")
+            print("  3. Connect to bootstrap nodes")
+            print("  4. Bootstrap: kadDHT.Bootstrap(ctx)")
+            print("  5. Discover: routingDiscovery.FindPeers(...)")
+            print("  6. Provide: kadDHT.Provide(ctx, contentID, true)")
+            print("  7. Find: kadDHT.FindProvidersAsync(ctx, contentID, 10)")
+            return False
+
+        print()
+
+        # Check the output
+        if not check_output():
+            print("\n⚠ Fix the output issues and try again")
+            print("\nTroubleshooting:")
+            print("  • Verify DHT instance is created")
+            print("  • Check bootstrap node connections (may need internet)")
+            print("  • Ensure DHT bootstrap completes")
+            print("  • Allow time for DHT to populate (5-10 seconds)")
+            print("  • Peer discovery may take time - be patient")
+            print("  • Try running: go run app/main.go")
+            return False
+
+        print("=" * 60)
+        print("✅ ALL CHECKS PASSED! Kademlia DHT is working correctly!")
+        print()
+        print("🎉 CONGRATULATIONS! 🎉")
+        print("You have successfully completed the Universal Connectivity Workshop!")
+        print()
+        print("✓ You have mastered:")
+        print("   • Identity and cryptographic foundations")
+        print("   • Transport layers (TCP, QUIC)")
+        print("   • Core protocols (Ping, Identify)")
+        print("   • Pub/Sub messaging (GossipSub)")
+        print("   • Distributed Hash Table (Kademlia DHT)")
+        print("   • Peer discovery at scale")
+        print("   • Content routing and provision")
+        print()
+        print("You now have the skills to build:")
+        print("   • Decentralized applications")
+        print("   • P2P file sharing systems")
+        print("   • Blockchain networks")
+        print("   • Distributed databases")
+        print("   • Censorship-resistant platforms")
+        print()
+        print("🚀 The future of the internet is decentralized,")
+        print("   and you're now equipped to build it!")
+        print()
+        print("Thank you for completing this workshop!")
+        print("=" * 60)
+
+        return True
+
+    except Exception as e:
+        print(f"✗ Unexpected error during checking: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

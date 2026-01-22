@@ -1,0 +1,23 @@
+title: Ping Protocol Checkpoint 🏆
+description: >
+  In this checkpoint lesson, you'll implement the ping protocol to test
+  connectivity and measure round-trip times between peers. The ping protocol
+  is fundamental for verifying bidirectional connectivity and measuring
+  network quality.
+status: NotStarted
+objectives:
+  - Understand the ping protocol mechanics
+  - Implement ping service in go-libp2p
+  - Measure round-trip times
+  - Handle ping responses
+  - Test connectivity with remote peers
+concepts:
+  - Ping Protocol
+  - Stream Handling
+  - Protocol Services
+  - Latency Measurement
+  - Connectivity Testing
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 02-tcp-transport

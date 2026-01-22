@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Check script for Lesson 2: TCP Transport
+Validates TCP transport configuration, listening, and connection establishment.
+"""
+
+import subprocess
+import sys
+import os
+import re
+
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+def validate_listening_address(addr_str):
+    """Validate that the listening address is properly formatted"""
+    # Should match pattern: /ip4/x.x.x.x/tcp/port/p2p/12D3KooW...
+    pattern = r'/ip[46]/[\d\.:a-fA-F]+/tcp/\d+/p2p/12D3KooW[A-Za-z0-9]+'
+    if not re.search(pattern, addr_str):
+        return False, f"Invalid listening address format: {addr_str}"
+    return True, f"Valid listening address: {addr_str}"
+
+def check_output():
+    """Check the output log for expected content"""
+    if not os.path.exists("stdout.log"):
+        print("✗ Error: stdout.log file not found")
+        return False
+
+    try:
+        with open("stdout.log", "r") as f:
+            output = f.read()
+
+        print("ℹ Checking application output...")
+
+        if not output.strip():
+            print("✗ stdout.log is empty - application may have failed to start")
+            return False
+
+        # Check for startup message
+        if "Starting Universal Connectivity Application" not in output:
+            print("✗ Missing startup message")
+            print(f"ℹ Actual output: {repr(output[:200])}")
+            return False
+        print("✓ Found startup message")
+
+        # Check for peer ID
+        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
+        peer_id_match = re.search(peer_id_pattern, output)
+        if not peer_id_match:
+            print("✗ Missing peer ID output")
+            return False
+        print(f"✓ Found peer ID: {peer_id_match.group(1)}")
+
+        # Check for listening addresses
+        if "Listening on:" not in output:
+            print("✗ Missing 'Listening on:' section")
+            return False
+        print("✓ Found listening addresses section")
+
+        # Check for at least one listening address
+        listen_pattern = r'/ip[46]/[\d\.:a-fA-F]+/tcp/\d+/p2p/12D3KooW[A-Za-z0-9]+'
+        listen_matches = re.findall(listen_pattern, output)
+        if not listen_matches:
+            print("✗ No valid listening addresses found")
+            return False
+        print(f"✓ Found {len(listen_matches)} listening address(es)")
+
+        # Validate listening addresses
+        for addr in listen_matches[:2]:  # Check first two addresses
+            valid, msg = validate_listening_address(addr)
+            if not valid:
+                print(f"✗ {msg}")
+                return False
+
+        # Check for connection event handling
+        if "Connected to:" in output or "Disconnected from:" in output:
+            print("✓ Found connection event messages")
+        else:
+            print("ℹ No connection events found (this is OK if no peers were dialed)")
+
+        print("✓ Application output is correct")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading stdout.log: {e}")
+        return False
+
+def check_code_structure():
+    """Check if the code has the expected structure"""
+    app_file = "app/main.go"
+
+    if not os.path.exists(app_file):
+        print("✗ Error: app/main.go file not found")
+        return False
+
+    try:
+        with open(app_file, "r") as f:
+            code = f.read()
+
+        print("ℹ Checking code structure...")
+
+        # Check for required imports
+        required_imports = [
+            "github.com/libp2p/go-libp2p",
+            "github.com/multiformats/go-multiaddr",
+            "network",
+        ]
+
+        for imp in required_imports:
+            if imp not in code:
+                print(f"✗ Missing import: {imp}")
+                return False
+        print("✓ Required imports found")
+
+        # Check for listening configuration
+        if "libp2p.ListenAddrStrings" not in code and "ListenAddrs" not in code:
+            print("✗ Missing listening address configuration")
+            return False
+        print("✓ Listening address configuration found")
+
+        # Check for address printing
+        if "h.Addrs()" not in code and "host.Addrs()" not in code:
+            print("✗ Missing code to print listening addresses (h.Addrs())")
+            return False
+        print("✓ Address printing found")
+
+        # Check for multiaddr parsing
+        if "multiaddr.NewMultiaddr" not in code and "multiaddr.StringCast" not in code:
+            print("✗ Missing multiaddress parsing")
+            return False
+        print("✓ Multiaddress parsing found")
+
+        # Check for connection handling
+        if "h.Connect" not in code:
+            print("✗ Missing connection code (h.Connect)")
+            return False
+        print("✓ Connection code found")
+
+        # Check for event subscription
+        if "EventBus().Subscribe" not in code and "event" in code.lower():
+            print("✓ Event subscription found")
+        else:
+            print("ℹ Event subscription not found (optional but recommended)")
+
+        print("✓ Code structure is correct")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading code file: {e}")
+        return False
+
+def main():
+    """Main check function"""
+    print("Checking Lesson 2: TCP Transport")
+    print("=" * 60)
+
+    try:
+        # Check code structure first
+        if not check_code_structure():
+            print("\n⚠ Fix the code structure issues and try again")
+            return False
+
+        print()
+
+        # Check the output
+        if not check_output():
+            print("\n⚠ Fix the output issues and try again")
+            return False
+
+        print("=" * 60)
+        print("✅ All checks passed! TCP transport is working correctly.")
+        print("✓ You have successfully:")
+        print("   • Configured TCP transport with listening addresses")
+        print("   • Parsed multiaddresses from environment variables")
+        print("   • Displayed listening addresses with peer ID")
+        print("   • Implemented connection dialing")
+        print("   • Set up event handling for connections")
+        print("\n🎉 Ready for Lesson 3: Ping Protocol Checkpoint!")
+
+        return True
+
+    except Exception as e:
+        print(f"✗ Unexpected error during checking: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

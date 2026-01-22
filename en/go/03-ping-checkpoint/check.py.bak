@@ -1,0 +1,260 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Check script for Lesson 3: Ping Protocol Checkpoint
+Validates ping protocol implementation and connectivity to checkpoint server.
+"""
+
+import subprocess
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import sys
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import os
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import re
+n# Fix Windows console encoding
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+def check_output():
+    """Check the output log for expected content"""
+    if not os.path.exists("stdout.log"):
+        print("✗ Error: stdout.log file not found")
+        print("ℹ Run the application first to generate output")
+        return False
+
+    try:
+        with open("stdout.log", "r") as f:
+            output = f.read()
+
+        print("ℹ Checking application output...")
+
+        if not output.strip():
+            print("✗ stdout.log is empty - application may have failed to start")
+            return False
+
+        # Check for startup message
+        if "Starting Universal Connectivity Application" not in output:
+            print("✗ Missing startup message")
+            return False
+        print("✓ Found startup message")
+
+        # Check for peer ID
+        peer_id_pattern = r"Local peer id: (12D3KooW[A-Za-z0-9]+)"
+        peer_id_match = re.search(peer_id_pattern, output)
+        if not peer_id_match:
+            print("✗ Missing peer ID output")
+            return False
+        print(f"✓ Found peer ID: {peer_id_match.group(1)}")
+
+        # Check for listening addresses
+        if "Listening on:" not in output:
+            print("✗ Missing 'Listening on:' section")
+            return False
+        print("✓ Found listening addresses")
+
+        # Check for ping service creation
+        if "Ping service created" not in output:
+            print("✗ Missing 'Ping service created' message")
+            print("ℹ Make sure you create the ping service with ping.NewPingService(h)")
+            return False
+        print("✓ Ping service created")
+
+        # Check for connection attempt
+        if "Dialing peer" not in output and "Connected to:" not in output:
+            print("✗ No connection attempts found")
+            print("ℹ Application should try to connect to peers")
+            return False
+        print("✓ Found connection attempt")
+
+        # Check for successful connection
+        connection_pattern = r"Connected to: (12D3KooW[A-Za-z0-9]+|Qm[A-Za-z0-9]+)"
+        connection_match = re.search(connection_pattern, output)
+        if not connection_match:
+            print("✗ No successful connection found")
+            print("ℹ Check network connectivity and peer addresses")
+            return False
+        print(f"✓ Connected to peer: {connection_match.group(1)}")
+
+        # Check for ping attempt
+        if "Pinging" not in output:
+            print("✗ No ping attempts found")
+            print("ℹ Application should ping connected peers")
+            return False
+        print("✓ Found ping attempt")
+
+        # Check for successful ping with RTT
+        ping_pattern = r"Ping to .+ successful: RTT = ([\d.]+[µmn]?s)"
+        ping_match = re.search(ping_pattern, output)
+        if not ping_match:
+            print("✗ No successful ping found")
+            print("ℹ Check if ping completed and RTT was displayed")
+            # Check if there was a ping failure message
+            if "Ping" in output and "failed" in output:
+                print("ℹ Ping failed - check error message in output")
+            return False
+
+        rtt_str = ping_match.group(1)
+        print(f"✓ Ping successful with RTT: {rtt_str}")
+
+        # Validate RTT is reasonable (less than 10 seconds)
+        try:
+            # Parse RTT value
+            if "ms" in rtt_str:
+                rtt_ms = float(rtt_str.replace("ms", ""))
+                if rtt_ms > 10000:  # More than 10 seconds
+                    print(f"⚠ Warning: RTT seems very high ({rtt_str})")
+            elif "s" in rtt_str and "ms" not in rtt_str:
+                rtt_s = float(rtt_str.replace("s", ""))
+                if rtt_s > 10:
+                    print(f"⚠ Warning: RTT seems very high ({rtt_str})")
+        except ValueError:
+            pass  # Couldn't parse, but that's OK
+
+        # Check for running state
+        if "Application running" in output or "Press Ctrl+C" in output:
+            print("✓ Application reached running state")
+
+        print("✓ All output checks passed")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading stdout.log: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def check_code_structure():
+    """Check if the code has the expected structure"""
+    app_file = "app/main.go"
+
+    if not os.path.exists(app_file):
+        print("✗ Error: app/main.go file not found")
+        return False
+
+    try:
+        with open(app_file, "r") as f:
+            code = f.read()
+
+        print("ℹ Checking code structure...")
+
+        # Check for required imports
+        required_imports = [
+            "github.com/libp2p/go-libp2p",
+            "ping",  # Could be full path or aliased
+        ]
+
+        for imp in required_imports:
+            if imp not in code:
+                print(f"✗ Missing import: {imp}")
+                print("ℹ Add: github.com/libp2p/go-libp2p/p2p/protocol/ping")
+                return False
+        print("✓ Required imports found")
+
+        # Check for ping service creation
+        if "ping.NewPingService" not in code:
+            print("✗ Missing ping service creation")
+            print("ℹ Add: pingService := ping.NewPingService(h)")
+            return False
+        print("✓ Ping service creation found")
+
+        # Check for ping call
+        if ".Ping(" not in code and "pingService.Ping" not in code:
+            print("✗ Missing ping call")
+            print("ℹ Add: resultChan := pingService.Ping(ctx, peerID)")
+            return False
+        print("✓ Ping call found")
+
+        # Check for result handling
+        if "result" not in code.lower() or "rtt" not in code.lower():
+            print("✗ Missing result/RTT handling")
+            print("ℹ Add: result := <-resultChan; fmt.Printf(\"RTT = %s\", result.RTT)")
+            return False
+        print("✓ Result handling found")
+
+        # Check for connection code
+        if "h.Connect" not in code and "host.Connect" not in code:
+            print("✗ Missing connection code")
+            return False
+        print("✓ Connection code found")
+
+        # Check for timeout/context usage
+        if "context.WithTimeout" in code or "time.Second" in code:
+            print("✓ Timeout handling found")
+        else:
+            print("ℹ Consider adding timeouts for connection and ping")
+
+        print("✓ Code structure is correct")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error reading code file: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def main():
+    """Main check function"""
+    print("Checking Lesson 3: Ping Protocol Checkpoint")
+    print("=" * 60)
+
+    try:
+        # Check code structure first
+        if not check_code_structure():
+            print("\n⚠ Fix the code structure issues and try again")
+            print("\nQuick fix checklist:")
+            print("  1. Import: github.com/libp2p/go-libp2p/p2p/protocol/ping")
+            print("  2. Create: pingService := ping.NewPingService(h)")
+            print("  3. Ping: resultChan := pingService.Ping(ctx, peerID)")
+            print("  4. Handle: result := <-resultChan")
+            print("  5. Display: fmt.Printf(\"RTT = %s\", result.RTT)")
+            return False
+
+        print()
+
+        # Check the output
+        if not check_output():
+            print("\n⚠ Fix the output issues and try again")
+            print("\nTroubleshooting:")
+            print("  • Check network connectivity to checkpoint server")
+            print("  • Verify multiaddress format includes /p2p/<peer-id>")
+            print("  • Ensure ping service was created successfully")
+            print("  • Check for error messages in the output")
+            print("  • Try running: go run app/main.go")
+            return False
+
+        print("=" * 60)
+        print("✅ All checks passed! Ping protocol is working correctly.")
+        print("✓ You have successfully:")
+        print("   • Created a ping service")
+        print("   • Connected to the checkpoint server")
+        print("   • Pinged the remote peer")
+        print("   • Measured and displayed RTT")
+        print("   • Completed your first checkpoint!")
+        print("\n🎉 Ready for Lesson 4: QUIC Transport!")
+
+        return True
+
+    except Exception as e:
+        print(f"✗ Unexpected error during checking: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

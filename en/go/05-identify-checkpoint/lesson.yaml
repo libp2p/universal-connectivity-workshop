@@ -1,0 +1,24 @@
+title: Identify Protocol Checkpoint
+description: >
+  Implement and use the identify protocol to exchange peer information.
+  Learn how peers discover each other's capabilities, supported protocols,
+  and network addresses. This is essential for protocol negotiation and
+  peer discovery.
+status: NotStarted
+objectives:
+  - Understand the identify protocol
+  - Access peer information from peerstore
+  - Handle protocol announcements
+  - Implement custom agent strings
+  - Use observed addresses
+concepts:
+  - Identify Protocol
+  - Peer Information Exchange
+  - Protocol Discovery
+  - Agent Version
+  - Observed Addresses
+  - Peerstore
+difficulty: intermediate
+estimated_time: 50
+prerequisites:
+  - 04-quic-transport

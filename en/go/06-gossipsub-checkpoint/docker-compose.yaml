@@ -1,0 +1,20 @@
+services:
+  workshop-lesson:
+    build: ./app
+    container_name: workshop-lesson
+    stop_grace_period: 1m
+    volumes:
+      - ./stdout.log:/tmp/stdout.log
+    command: sh -c "timeout 10 ./main > /tmp/stdout.log 2>&1 || true"
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.16.0/24
