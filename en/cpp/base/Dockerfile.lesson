@@ -1,0 +1,42 @@
+# Lesson Dockerfile - uses pre-built cpp-libp2p base image
+# Build time: ~30 seconds instead of 30+ minutes
+
+# Stage 1: Build the lesson using base image
+FROM cpp-libp2p-base:latest AS builder
+
+WORKDIR /app
+
+# Copy lesson source files
+COPY main.cpp CMakeLists.txt ./
+
+# Build the lesson (cpp-libp2p is already built in base image)
+RUN HUNTER_DIR=$(cat /opt/hunter_path.txt) && \
+    mkdir build && cd build && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="/opt/libp2p-install;${HUNTER_DIR}" && \
+    cmake --build . --parallel $(nproc)
+
+# Stage 2: Runtime environment
+FROM --platform=linux/amd64 ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built binary
+COPY --from=builder /app/build/lesson /app/lesson
+
+RUN ldconfig 2>/dev/null || true
+
+# Environment variables for lesson
+ENV LISTEN_PORT=9000
+ENV REMOTE_PEERS=""
+
+ARG TIMEOUT_DURATION=30s
+ENV TIMEOUT_DURATION=${TIMEOUT_DURATION}
+
+CMD ["/bin/sh", "-c", "timeout ${TIMEOUT_DURATION} /app/lesson 2>&1 | tee /app/stdout.log"]

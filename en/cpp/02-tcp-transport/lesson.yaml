@@ -1,0 +1,23 @@
+title: TCP Transport
+description: >
+  In this lesson, we will learn how to configure TCP transport in cpp-libp2p,
+  listen for incoming connections, and dial remote peers. We will explore
+  multiaddresses, connection events, and the transport stack architecture.
+status: NotStarted
+objectives:
+  - Understand libp2p's transport abstraction
+  - Configure TCP transport with Noise security and Yamux multiplexing
+  - Parse multiaddresses from environment variables
+  - Listen on a TCP port for incoming connections
+  - Dial remote peers and handle connection events
+concepts:
+  - Transport Layer (TCP)
+  - Multiaddresses
+  - Connection Events
+  - Listening and Dialing
+  - Noise Security Protocol
+  - Yamux Multiplexer
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-swarm

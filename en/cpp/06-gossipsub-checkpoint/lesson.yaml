@@ -1,0 +1,17 @@
+title: "Gossipsub Checkpoint"
+description: "Implement Gossipsub for publish-subscribe messaging"
+difficulty: intermediate
+language: cpp
+lesson_number: 6
+topics:
+  - gossipsub
+  - pubsub
+  - messaging
+  - topics
+prerequisites:
+  - lesson-05-identify-checkpoint
+learning_objectives:
+  - Understand publish-subscribe messaging patterns
+  - Implement Gossipsub for topic-based communication
+  - Subscribe to and publish messages on topics
+  - Handle peer subscription and discovery events

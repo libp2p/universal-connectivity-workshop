@@ -1,0 +1,17 @@
+title: "QUIC Transport"
+description: "Extend the ping application to support QUIC transport alongside TCP"
+difficulty: intermediate
+language: cpp
+lesson_number: 4
+topics:
+  - quic
+  - transport
+  - multi-transport
+  - udp
+prerequisites:
+  - lesson-03-ping-checkpoint
+learning_objectives:
+  - Understand QUIC advantages over TCP
+  - Configure multi-transport libp2p hosts
+  - Connect to peers using QUIC multiaddresses
+  - Handle connections transparently across transports

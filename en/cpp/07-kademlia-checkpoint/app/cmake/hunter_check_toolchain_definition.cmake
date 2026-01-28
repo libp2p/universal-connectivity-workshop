@@ -1,0 +1,7 @@
+# Stub for Hunter's toolchain check (not needed on non-MSVC)
+function(hunter_check_toolchain_definition)
+  cmake_parse_arguments(x "" "NAME;DEFINED" "" ${ARGN})
+  if(x_DEFINED)
+    set(${x_DEFINED} FALSE PARENT_SCOPE)
+  endif()
+endfunction()

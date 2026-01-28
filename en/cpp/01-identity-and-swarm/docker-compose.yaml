@@ -1,0 +1,15 @@
+services:
+  lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: cpp-lesson01
+    stop_grace_period: 30s
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-10s}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+
+networks:
+  default:
+    name: workshop-net

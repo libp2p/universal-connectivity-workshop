@@ -1,0 +1,23 @@
+title: Ping Checkpoint
+description: >
+  In this lesson, we implement the ping protocol to measure connectivity
+  and round-trip times between peers. This is your first checkpoint where
+  you verify bidirectional communication with a remote peer.
+status: NotStarted
+objectives:
+  - Understand the purpose and mechanics of the ping protocol
+  - Configure ping with custom interval and timeout
+  - Handle incoming ping requests (server mode)
+  - Send pings and measure round-trip times (client mode)
+  - Successfully establish bidirectional connectivity
+concepts:
+  - Ping Protocol (/ipfs/ping/1.0.0)
+  - Round-Trip Time (RTT) Measurement
+  - Protocol Handlers
+  - Bidirectional Communication
+  - Keep-Alive Mechanisms
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-swarm
+  - 02-tcp-transport

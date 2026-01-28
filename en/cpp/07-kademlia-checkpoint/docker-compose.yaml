@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    environment:
+      - LISTEN_PORT=9000
+      - QUIC_PORT=9001
+      - REMOTE_PEERS=${REMOTE_PEERS:-}
+      - BOOTSTRAP_PEERS=${BOOTSTRAP_PEERS:-}
+    ports:
+      - "9000:9000"
+      - "9001:9001/udp"
+    volumes:
+      - ./stdout.log:/app/stdout.log

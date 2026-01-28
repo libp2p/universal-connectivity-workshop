@@ -1,0 +1,17 @@
+title: "Identify Checkpoint"
+description: "Implement the Identify protocol for peer capability discovery"
+difficulty: intermediate
+language: cpp
+lesson_number: 5
+topics:
+  - identify
+  - protocol
+  - capability-discovery
+  - peer-info
+prerequisites:
+  - lesson-04-quic-transport
+learning_objectives:
+  - Understand the purpose and role of the Identify protocol
+  - Implement identify protocol handling
+  - Handle identify events and extract peer information
+  - Exchange protocol capabilities with remote peers

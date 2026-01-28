@@ -1,0 +1,24 @@
+services:
+  lesson:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: cpp-lesson02
+    stop_grace_period: 30s
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-30s}
+      - LISTEN_PORT=${LISTEN_PORT:-9000}
+      - REMOTE_PEERS=${REMOTE_PEERS:-}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+
+networks:
+  workshop-net:
+    name: workshop-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.16.0/24

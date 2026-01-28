@@ -1,0 +1,18 @@
+Starting Universal Connectivity Application...
+26.01.27 00:49:17[38;2;128;128;128m.360053[0m  [38;2;255;165;000m[1mWarning [0m  [1mSoralog[0m  Group 'Gossip' for logger 'gossip' is not found. Fallback group will be used (currently 'libp2p').[0m
+Local peer id: 12D3KooW9pPXiiTch3xb427ToTEoFJmedNe417Y6QqWUfPfqMbFb
+Agent version: universal-connectivity/0.1.0
+Listening on TCP: /ip4/0.0.0.0/tcp/9000
+Listening on QUIC: /ip4/0.0.0.0/udp/9001/quic-v1
+26.01.27 00:49:17[38;2;128;128;128m.360595[0m  [38;2;034;139;034m[1mInfo    [0m  [1mgossip[0m  fqMbFb started[0m
+Protocols:
+  - Ping: /ipfs/ping/1.0.0
+  - Identify: /ipfs/id/1.0.0
+  - Gossipsub: /meshsub/1.0.0
+Topics:
+  - universal-connectivity
+  - universal-connectivity-browser-peer-discovery
+Transports: TCP + QUIC
+Waiting for connections and messages...
+Published heartbeat to universal-connectivity
+Shutting down...

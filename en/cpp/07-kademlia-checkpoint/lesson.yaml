@@ -1,0 +1,18 @@
+title: "Kademlia Checkpoint (Final)"
+description: "Implement the Kademlia DHT for decentralized peer discovery"
+difficulty: intermediate
+language: cpp
+lesson_number: 7
+topics:
+  - kademlia
+  - dht
+  - peer-discovery
+  - bootstrap
+  - routing
+prerequisites:
+  - lesson-06-gossipsub-checkpoint
+learning_objectives:
+  - Understand the Kademlia distributed hash table
+  - Implement DHT-based peer discovery
+  - Bootstrap into existing networks
+  - Combine all protocols for complete connectivity

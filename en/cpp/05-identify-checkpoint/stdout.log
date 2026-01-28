@@ -1,0 +1,12 @@
+Starting Universal Connectivity Application...
+Local peer id: 12D3KooWQFjTsnGDMuiEu9wn4A93uH1jrhdn2rCzoSAsgz2TzvaC
+Agent version: universal-connectivity/0.1.0
+Protocol version: /ipfs/0.1.0
+Listening on TCP: /ip4/0.0.0.0/tcp/9000
+Listening on QUIC: /ip4/0.0.0.0/udp/9001/quic-v1
+Protocols:
+  - Ping: /ipfs/ping/1.0.0
+  - Identify: /ipfs/id/1.0.0
+Transports: TCP + QUIC
+Waiting for connections...
+Shutting down...

@@ -1,0 +1,23 @@
+title: Identity and Basic Host
+description: >
+  In this lesson, we will learn how to create a basic libp2p host and set up
+  cryptographic identity for our peer. We will explore the concept of PeerId
+  generation using Ed25519 keypairs and understand the foundations of
+  peer-to-peer identity in distributed systems using C++ and cpp-libp2p.
+status: NotStarted
+objectives:
+  - Understand cryptographic identity in peer-to-peer networks
+  - Generate Ed25519 keypairs for peer identification
+  - Create PeerId from public key
+  - Initialize a basic libp2p Host using cpp-libp2p
+  - Set up Boost.Asio event loop for network operations
+concepts:
+  - Peer Identity
+  - Cryptographic Keypairs (Ed25519)
+  - PeerId Generation
+  - libp2p Host
+  - Boost.Asio async I/O
+  - Dependency Injection with Boost.DI
+difficulty: beginner
+estimated_time: 45
+prerequisites: []
