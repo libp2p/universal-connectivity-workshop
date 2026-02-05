@@ -1,0 +1,13 @@
+services:
+  workshop-lesson:
+    build: ./app
+    container_name: workshop-lesson-jvm-03-ping
+    stop_grace_period: 1m
+    command: sh -c "timeout 10 java -jar /app/app.jar 2>&1 || true"
+    networks:
+      - workshop-net
+
+networks:
+  workshop-net:
+    name: workshop-net
+    external: true

@@ -1,0 +1,24 @@
+title: QUIC Transport
+description: >
+  Add QUIC transport to your libp2p host for modern, efficient connectivity.
+  QUIC provides built-in encryption, multiplexing, and improved performance
+  over UDP. Learn how to configure multiple transports and understand their
+  trade-offs. Note: QUIC support in jvm-libp2p is currently in BETA status.
+status: NotStarted
+objectives:
+  - Understand QUIC transport benefits
+  - Configure multi-transport architecture
+  - Learn about QUIC beta status in jvm-libp2p
+  - Handle multi-transport scenarios
+  - Understand UDP vs TCP trade-offs
+concepts:
+  - QUIC Protocol
+  - UDP Transport
+  - Multi-Transport Support
+  - Built-in Encryption
+  - Transport Selection
+  - Beta Features
+difficulty: intermediate
+estimated_time: 40
+prerequisites:
+  - 02-tcp-transport

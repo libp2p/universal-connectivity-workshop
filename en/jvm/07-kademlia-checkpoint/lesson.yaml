@@ -1,0 +1,24 @@
+title: Kademlia DHT Checkpoint (Conceptual)
+description: >
+  Understand the Kademlia Distributed Hash Table (DHT) for peer and content
+  discovery. Learn DHT fundamentals and explore alternative discovery methods
+  currently available in jvm-libp2p while DHT implementation is in development.
+status: NotStarted
+objectives:
+  - Understand DHT fundamentals and Kademlia algorithm
+  - Learn about distributed peer routing
+  - Explore content addressing and provider records
+  - Implement mDNS local discovery as an alternative
+  - Build a comprehensive peer discovery application
+  - Complete the jvm-libp2p workshop journey
+concepts:
+  - Distributed Hash Table
+  - Kademlia Algorithm
+  - Peer Discovery
+  - Content Routing
+  - mDNS Discovery
+  - Network Bootstrap
+difficulty: intermediate
+estimated_time: 60
+prerequisites:
+  - 02-tcp-transport

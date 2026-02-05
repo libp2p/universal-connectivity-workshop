@@ -1,0 +1,22 @@
+title: Transport Layer - TCP Connection
+description: >
+  In this lesson, we will learn how to establish a TCP connection between two
+  nodes. We will explore the process of listening for connections and dialing
+  remote peers over TCP. This is crucial for enabling communication in distributed systems.
+status: NotStarted
+objectives:
+  - Understand libp2p's transport abstraction
+  - Configure TCP transport with listening addresses
+  - Parse and dial remote peer multiaddresses
+  - Handle connection establishment events
+  - Implement connection lifecycle management
+concepts:
+  - Transport Layer
+  - Multiaddresses
+  - Listening and Dialing
+  - Connection Events
+  - Network Stack
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-host
