@@ -1,0 +1,32 @@
+title: Gossipsub Checkpoint
+description: >
+  Welcome to your third checkpoint! In this lesson, you'll implement Gossipsub,
+  libp2p's publish-subscribe protocol that enables topic-based messaging across
+  peer-to-peer networks. You'll learn how Gossipsub efficiently distributes
+  messages through mesh networking while protecting against malicious peers
+  through peer scoring mechanisms.
+status: NotStarted
+objectives:
+  - Understand publish-subscribe messaging patterns and why Gossipsub exists
+  - Learn the difference between mesh members and gossip peers
+  - Implement Gossipsub for topic-based communication
+  - Subscribe to topics and handle incoming messages
+  - Publish messages to connected peers
+  - Understand Gossipsub's Byzantine fault tolerance mechanisms
+concepts:
+  - Gossipsub Protocol
+  - Publish-Subscribe Patterns
+  - Mesh Networking
+  - Topic Subscription
+  - Message Publishing
+  - Peer Scoring
+  - Byzantine Fault Tolerance
+  - FloodSub vs Gossipsub
+difficulty: intermediate
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-swarm
+  - 02-tcp-transport
+  - 03-ping-checkpoint
+  - 04-quic-transport
+  - 05-identify-checkpoint

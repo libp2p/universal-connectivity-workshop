@@ -1,0 +1,18 @@
+title: "Kademlia Checkpoint"
+description: "Implement Kademlia DHT for decentralized peer discovery and content routing"
+order: 7
+checkpoint: true
+topics:
+  - kademlia
+  - dht
+  - peer-discovery
+  - content-routing
+  - distributed-hash-table
+prerequisites:
+  - "06-gossipsub-checkpoint"
+objectives:
+  - "Understand distributed hash tables and the Kademlia protocol"
+  - "Implement Kademlia DHT for peer discovery"
+  - "Handle bootstrap processes and peer routing"
+  - "Store and retrieve values in the DHT"
+  - "Work with providers (content advertisement and discovery)"

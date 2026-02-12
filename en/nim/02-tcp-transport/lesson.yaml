@@ -1,0 +1,25 @@
+title: Transport Layer - TCP Connection
+description: >
+  In this lesson, we will learn how to establish a TCP connection between two
+  nodes using nim-libp2p. We will explore the process of connecting to a peer,
+  handling connection events, and understanding the transport stack. This is
+  crucial for enabling communication in distributed peer-to-peer systems.
+status: NotStarted
+objectives:
+  - Understand nim-libp2p's transport abstraction
+  - Configure TCP transport with security and multiplexing
+  - Parse remote peer addresses from environment variables
+  - Establish a connection to a remote peer
+  - Handle connection events (connected/disconnected)
+concepts:
+  - Transport Layer
+  - TCP Transport
+  - MultiAddress Parsing
+  - Connection Events
+  - ConnEventHandler
+  - Noise Protocol
+  - Mplex Multiplexing
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-swarm

@@ -1,0 +1,25 @@
+title: Ping Checkpoint
+description: >
+  Welcome to your first checkpoint! In this lesson, you'll implement the ping
+  protocol using nim-libp2p to establish bidirectional connectivity with a
+  remote peer and measure round-trip times (RTT). This lesson builds on basic
+  libp2p concepts and introduces protocol handling.
+status: NotStarted
+objectives:
+  - Understand the purpose and mechanics of the ping protocol
+  - Mount the Ping protocol on a Switch
+  - Dial remote peers using the PingCodec
+  - Measure and display round-trip times (RTT)
+  - Handle ping events and connection lifecycle
+concepts:
+  - Ping Protocol
+  - Protocol Mounting
+  - Round-Trip Time (RTT)
+  - Connection Dialing
+  - Protocol Codecs
+  - Async Loops
+difficulty: beginner
+estimated_time: 45
+prerequisites:
+  - 01-identity-and-swarm
+  - 02-tcp-transport

@@ -1,0 +1,23 @@
+title: Identity and Basic Switch
+description: >
+  In this lesson, we will learn how to create a basic nim-libp2p Switch and set up
+  cryptographic identity for our peer. We will explore the concept of PeerId
+  generation using Ed25519 keypairs and understand the foundations of
+  peer-to-peer identity in distributed systems using Nim.
+status: NotStarted
+objectives:
+  - Understand cryptographic identity in peer-to-peer networks
+  - Generate random number generator for key generation
+  - Create a libp2p Switch using SwitchBuilder
+  - Access PeerId from switch's PeerInfo
+  - Set up async event loop with Chronos
+concepts:
+  - Peer Identity
+  - Cryptographic Keypairs
+  - PeerId Generation
+  - libp2p Switch
+  - SwitchBuilder Pattern
+  - Chronos Async
+difficulty: beginner
+estimated_time: 30
+prerequisites: []

@@ -1,0 +1,27 @@
+title: Identify Checkpoint
+description: >
+  Welcome to your second checkpoint! In this lesson, you'll learn about the
+  Identify protocol, which allows libp2p peers to exchange information about
+  their capabilities, supported protocols, and network details. You'll discover
+  how nim-libp2p automatically handles Identify and how to access peer
+  information from the PeerStore.
+status: NotStarted
+objectives:
+  - Understand the purpose of the Identify protocol in libp2p
+  - Learn how nim-libp2p automatically handles Identify
+  - Access peer information from the PeerStore
+  - Display peer capabilities including protocols and agent version
+concepts:
+  - Identify Protocol
+  - PeerStore
+  - Peer Books (AddressBook, ProtoBook, AgentBook)
+  - Capability Discovery
+  - Protocol Negotiation
+  - Automatic Protocol Handling
+difficulty: beginner
+estimated_time: 30
+prerequisites:
+  - 01-identity-and-swarm
+  - 02-tcp-transport
+  - 03-ping-checkpoint
+  - 04-quic-transport

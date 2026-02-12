@@ -6,3 +6,7 @@
 /en/rs/06-gossipsub-checkpoint/checker/target
 /en/rs/07-kademlia-checkpoint/checker/target
 /en/rs/08-final-checkpoint/checker/target
+
+# Nim build artifacts
+lesson
+*.nimble

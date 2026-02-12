@@ -1,0 +1,25 @@
+title: QUIC Transport
+description: >
+  Now that you understand TCP transport and have implemented the ping protocol,
+  let's explore QUIC - a modern UDP-based transport protocol that provides
+  built-in encryption and multiplexing. You'll learn about nim-libp2p's
+  multi-transport capabilities by adding QUIC support to your application.
+status: NotStarted
+objectives:
+  - Understand the advantages of QUIC over TCP
+  - Configure multi-transport nim-libp2p nodes
+  - Handle connections over different transport protocols
+  - Connect to remote peers using QUIC multiaddresses
+concepts:
+  - QUIC Transport
+  - UDP-based Networking
+  - Multi-Transport Configuration
+  - Transport Abstraction
+  - Built-in Encryption
+  - Connection Multiplexing
+difficulty: beginner
+estimated_time: 30
+prerequisites:
+  - 01-identity-and-swarm
+  - 02-tcp-transport
+  - 03-ping-checkpoint
