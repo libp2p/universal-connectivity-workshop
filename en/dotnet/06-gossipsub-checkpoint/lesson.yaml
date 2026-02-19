@@ -1,0 +1,13 @@
+title: "GossipSub Checkpoint"
+description: "Implement pub/sub messaging with GossipSub"
+difficulty: "intermediate"
+estimated_time: "30 minutes"
+concepts:
+  - "Pub/sub messaging"
+  - "GossipSub protocol"
+  - "Topic subscription"
+  - "Message propagation"
+objectives:
+  - "Subscribe to topics"
+  - "Publish messages"
+  - "Receive messages"

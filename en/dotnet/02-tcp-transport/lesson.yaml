@@ -1,0 +1,14 @@
+title: "TCP Transport"
+description: "Add TCP transport to listen for and connect to other peers"
+difficulty: "beginner"
+estimated_time: "25-35 minutes"
+concepts:
+  - "TCP transport"
+  - "Multiaddresses"
+  - "Listen vs Dial"
+  - "Connection events"
+objectives:
+  - "Start listening on TCP"
+  - "Parse multiaddresses"
+  - "Dial remote peers"
+  - "Handle connections"

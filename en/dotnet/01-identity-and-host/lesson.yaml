@@ -1,0 +1,15 @@
+title: "Identity and Host"
+description: "Create your first libp2p peer with cryptographic identity using .NET"
+difficulty: "beginner"
+estimated_time: "20-30 minutes"
+concepts:
+  - "PeerId and cryptographic identity"
+  - "Ed25519 keypairs"
+  - ".NET dependency injection (IoC)"
+  - "ILocalPeer creation"
+  - "Async/await patterns"
+objectives:
+  - "Understand libp2p peer identity"
+  - "Use AddLibp2p() with ServiceCollection"
+  - "Create and print a PeerId"
+  - "Handle graceful shutdown"

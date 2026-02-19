@@ -1,0 +1,10 @@
+title: "Plaintext Security"
+description: "Understand security layers using plaintext protocol"
+difficulty: "beginner"
+estimated_time: "15 minutes"
+concepts:
+  - "Security protocols"
+  - "Plaintext vs encrypted"
+objectives:
+  - "Configure security layer"
+  - "Understand trade-offs"

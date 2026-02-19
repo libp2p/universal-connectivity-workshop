@@ -1,0 +1,11 @@
+title: "Ping Checkpoint"
+description: "Use the Ping protocol to verify connectivity"
+difficulty: "beginner"
+estimated_time: "20 minutes"
+concepts:
+  - "Ping protocol"
+  - "Built-in protocols"
+  - "RTT measurement"
+objectives:
+  - "Use Ping protocol"
+  - "Verify connectivity"

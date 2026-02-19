@@ -1,0 +1,11 @@
+title: "Identify Checkpoint"
+description: "Exchange peer metadata with Identify protocol"
+difficulty: "intermediate"
+estimated_time: "20 minutes"
+concepts:
+  - "Identify protocol"
+  - "Peer metadata"
+  - "Protocol capabilities"
+objectives:
+  - "Use Identify protocol"
+  - "Discover peer info"

@@ -1,0 +1,15 @@
+services:
+  lesson:
+    build:
+      context: ../../..
+      dockerfile: en/dotnet/01-identity-and-host/app/Dockerfile
+    container_name: workshop-lesson
+    stop_grace_period: 1m
+    environment:
+      - TIMEOUT_DURATION=${TIMEOUT_DURATION:-20s}
+    volumes:
+      - ./stdout.log:/app/stdout.log
+    networks:
+      workshop-net:
+        ipv4_address: 172.16.16.16
+

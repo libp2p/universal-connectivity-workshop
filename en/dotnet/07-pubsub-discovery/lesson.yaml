@@ -1,0 +1,14 @@
+title: "Pubsub Peer Discovery"
+description: "Discover peers using pubsub instead of Kademlia DHT"
+difficulty: "intermediate"
+estimated_time: "30 minutes"
+concepts:
+  - "Peer discovery"
+  - "Pubsub discovery"
+  - "Rendezvous topics"
+  - "Mesh topology"
+objectives:
+  - "Subscribe to discovery topic"
+  - "Announce presence"
+  - "Discover peers dynamically"
+  - "Build peer topology"
